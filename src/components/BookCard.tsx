@@ -1,6 +1,8 @@
 import React from 'react';
+import Link from 'next/link';
 
 interface BookCardProps {
+  id: number;
   title: string;
   author: string;
   chapterCount: number;
@@ -9,18 +11,17 @@ interface BookCardProps {
   coverUrl: string;
 }
 
-export default function BookCard({ title, author, chapterCount, rating, status, coverUrl }: BookCardProps) {
+export default function BookCard({ id, title, author, chapterCount, rating, status, coverUrl }: BookCardProps) {
   return (
-    <div className="group flex flex-col gap-2 cursor-pointer">
+    <Link href={`/books/${id}`} className="group flex flex-col gap-2 cursor-pointer">
       <div className="relative aspect-[2/3] overflow-hidden rounded-md shadow-sm group-hover:shadow-md transition-shadow">
-        {/* Using a standard img tag for simplicity, in a real app you'd use next/image */}
         <img 
           src={coverUrl} 
           alt={title} 
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-          {rating.toFixed(1)}
+          {rating ? Number(rating).toFixed(1) : "8.0"}
         </div>
       </div>
       <div>
@@ -33,6 +34,6 @@ export default function BookCard({ title, author, chapterCount, rating, status, 
           <span className={status === 'Hoàn thành' ? 'text-green-600 font-medium' : 'text-orange-500 font-medium'}>{status}</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -1,36 +1,24 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ===== Next.js =====
+.next/
+out/
+build/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
+# ===== Dependencies =====
+node_modules/
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
+# ===== Environment variables (KHÔNG commit key bí mật) =====
+.env
+.env.local
+.env.production
 .env*.local
 
-# vercel
-.vercel
+# ===== Python Importer =====
+importer/venv/
+importer/chapters/        # Thư mục chứa file chương đã tách (dữ liệu local)
+importer/__pycache__/
+importer/*.pyc
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# ===== Misc =====
+.DS_Store
+*.log
+Thumbs.db

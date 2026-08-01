@@ -609,3 +609,6 @@ Các giá trị dưới đây là đề xuất mặc định. Cần xác nhận 
 12. **Thứ tự parser:** EPUB và TXT trước, DOCX và DOC sau.
 
 Sau khi tài liệu này được duyệt, bước tiếp theo mới là scaffold mã nguồn và tạo môi trường local.
+
+#### Domain page
+https://vercel.com/tienhiep/tienhiep/settings/domains
