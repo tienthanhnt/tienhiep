@@ -17,14 +17,55 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-def get_or_create_book(title, author):
+SUPABASE_URL_BASE = url
+STORAGE_BUCKET = "covers"
+DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
+
+
+def upload_cover_image(original_dir: str, book_title: str) -> str:
+    """Upload theme.png từ thư mục gốc lên Supabase Storage. Trả về public URL."""
+    theme_path = os.path.join(original_dir, "theme.png")
+    if not os.path.exists(theme_path):
+        print("ℹ️  Không tìm thấy theme.png — dùng ảnh mặc định.")
+        return DEFAULT_COVER
+
+    # Tên file trên Storage: slug tên truyện
+    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", book_title).lower() + ".png"
+
+    try:
+        with open(theme_path, "rb") as f:
+            image_bytes = f.read()
+        # Xóa file cũ nếu đã tồn tại (upsert)
+        try:
+            supabase.storage.from_(STORAGE_BUCKET).remove([safe_name])
+        except Exception:
+            pass
+        supabase.storage.from_(STORAGE_BUCKET).upload(
+            safe_name,
+            image_bytes,
+            {"content-type": "image/png"}
+        )
+        public_url = supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
+        print(f"🖼️  Đã upload ảnh bìa: {public_url}")
+        return public_url
+    except Exception as e:
+        print(f"⚠️  Lỗi upload ảnh bìa: {e}")
+        print("   Gợi ý: Hãy tạo bucket 'covers' (Public) trong Supabase Storage.")
+        return DEFAULT_COVER
+
+
+def get_or_create_book(title, author, cover_url=DEFAULT_COVER):
     # Kiểm tra xem truyện đã có trên DB chưa
     res = supabase.table("books").select("id").eq("title", title).execute()
     if len(res.data) > 0:
         book_id = res.data[0]['id']
         print(f"🔍 Đã tìm thấy truyện '{title}' trên Database (ID: {book_id})")
+        # Cập nhật cover_url nếu đã có ảnh mới
+        if cover_url != DEFAULT_COVER:
+            supabase.table("books").update({"cover_url": cover_url}).eq("id", book_id).execute()
+            print(f"🖼️  Đã cập nhật ảnh bìa mới cho truyện ID={book_id}")
         return book_id
-        
+
     print(f"🚀 Chưa có truyện '{title}'. Đang tạo mới...")
     book_data = {
         "title": title,
@@ -32,7 +73,7 @@ def get_or_create_book(title, author):
         "status": "Đang ra",
         "rating": 8.0,
         "chapter_count": 0,
-        "cover_url": "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
+        "cover_url": cover_url
     }
     res = supabase.table("books").insert(book_data).execute()
     book_id = res.data[0]['id']
@@ -55,7 +96,8 @@ def upload_chapters(translated_dir, original_dir):
                 elif line.startswith("author="):
                     book_author = line.split("=", 1)[1].strip()
 
-    book_id = get_or_create_book(book_title, book_author)
+    cover_url = upload_cover_image(original_dir, book_title)
+    book_id = get_or_create_book(book_title, book_author, cover_url)
     
     # Đọc danh sách các chương đã dịch
     files = sorted([f for f in os.listdir(translated_dir) if f.endswith(".md")])

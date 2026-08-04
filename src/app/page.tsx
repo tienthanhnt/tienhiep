@@ -73,49 +73,21 @@ export default async function Home() {
     : MOCK_BOOKS;
 
   return (
-    <div className="flex flex-col gap-10">
-      {/* Banner Phong Cách Cổ Giấy / Tiên Hiệp */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E2533] via-[#181D27] to-[#2A2118] text-[#E5DDCB] p-8 md:p-10 border border-[#C69C4E]/40 shadow-xl">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#C69C4E]/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C69C4E]/15 border border-[#C69C4E]/30 text-[#D4AF37] text-xs font-semibold mb-4">
-            <span>⛩️ Thư Viện Tiên Hiệp</span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-wide mb-3 font-cinzel text-white leading-tight">
-            Thế Giới Tu Tiên Kỳ Ảo
-          </h1>
-          <p className="text-sm md:text-base text-[#B8AE9C] leading-relaxed max-w-2xl font-serif-reading">
-            Đắm chìm vào những pho bí kíp tu tiên, vượt qua tam tai cửu kiếp, lĩnh hội thiên đạo trường sinh. Tất cả tác phẩm đều được trau chuốt văn phong thuần Việt mượt mà.
-          </p>
-        </div>
-      </section>
-
-      {/* Danh sách Truyện Mới Cập Nhật */}
-      <section>
-        <div className="flex items-center justify-between mb-6 border-b border-[#C69C4E]/30 pb-3">
-          <h2 className="text-xl font-bold flex items-center gap-2.5 text-[#2C2825]">
-            <span className="w-1.5 h-6 bg-[#C69C4E] inline-block rounded-full"></span>
-            Tiểu Thuyết Mới Cập Nhật
-          </h2>
-          <span className="text-xs text-[#A37B34] font-semibold tracking-wide">TỔNG HỢP TIÊN HIỆP</span>
-        </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-5 gap-y-8">
-          {booksToDisplay.map((book) => (
-            <BookCard key={book.id} {...book} />
-          ))}
-        </div>
-      </section>
-
-      {/* Giới thiệu Đọc Truyện */}
-      <section className="ancient-card p-6 md:p-8 rounded-xl border border-[#C69C4E]/30 mt-4">
-        <h2 className="text-lg font-bold mb-3 text-[#2C2825] flex items-center gap-2">
-          <span>📜</span> Không Gian Đọc Truyện Chuẩn Văn Phong
-        </h2>
-        <p className="text-sm text-[#5C5449] leading-relaxed mb-3 font-serif-reading">
-          Tàng Kinh Các là nơi lưu giữ những bản dịch tiểu thuyết Tiên Hiệp được biên tập kỹ lưỡng. Từng câu chữ được gọt giũa thuần Việt, giữ nguyên tinh thần võ học và thần thoại phương Đông.
-        </p>
-      </section>
+    <div className="flex flex-col gap-6">
+      {/* Dynamic Book Grid Header */}
+      <div className="flex items-center justify-between border-b border-[#C69C4E]/30 pb-3">
+        <h1 className="text-xl font-bold flex items-center gap-2.5 text-[#2C2825]">
+          <span className="w-1.5 h-6 bg-[#C69C4E] inline-block rounded-full"></span>
+          Danh Sách Truyện ({booksToDisplay.length})
+        </h1>
+      </div>
+      
+      {/* Book Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-5 gap-y-7">
+        {booksToDisplay.map((book) => (
+          <BookCard key={book.id} {...book} />
+        ))}
+      </div>
     </div>
   );
 }
