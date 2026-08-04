@@ -22,9 +22,9 @@ STORAGE_BUCKET = "covers"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
 
 
-def upload_cover_image(original_dir: str, book_title: str) -> str:
-    """Upload theme.png từ thư mục gốc lên Supabase Storage. Trả về public URL."""
-    theme_path = os.path.join(original_dir, "theme.png")
+def upload_cover_image(translated_dir: str, book_title: str) -> str:
+    """Upload theme.png từ thư mục Translated lên Supabase Storage. Trả về public URL."""
+    theme_path = os.path.join(translated_dir, "theme.png")
     if not os.path.exists(theme_path):
         print("ℹ️  Không tìm thấy theme.png — dùng ảnh mặc định.")
         return DEFAULT_COVER
@@ -80,14 +80,14 @@ def get_or_create_book(title, author, cover_url=DEFAULT_COVER):
     print(f"✅ Đã tạo truyện mới với ID = {book_id}")
     return book_id
 
-def upload_chapters(translated_dir, original_dir):
+def upload_chapters(translated_dir):
     print(f"📖 Đang đọc các chương từ: {translated_dir}")
-    
-    # Lấy thông tin truyện
-    book_title = "Xích Tâm Tuần Thiên"
-    book_author = "Tình Hà Dĩ Thậm"
-    info_path = os.path.join(original_dir, "book_info.txt")
-    
+
+    # Lấy thông tin truyện từ book_info.txt trong thư mục Translated
+    book_title = "Chưa đặt tên"
+    book_author = "Chưa rõ"
+    info_path = os.path.join(translated_dir, "book_info.txt")
+
     if os.path.exists(info_path):
         with open(info_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -95,8 +95,10 @@ def upload_chapters(translated_dir, original_dir):
                     book_title = line.split("=", 1)[1].strip()
                 elif line.startswith("author="):
                     book_author = line.split("=", 1)[1].strip()
+    else:
+        print("⚠️  Không tìm thấy book_info.txt — dùng tiêu đề mặc định.")
 
-    cover_url = upload_cover_image(original_dir, book_title)
+    cover_url = upload_cover_image(translated_dir, book_title)
     book_id = get_or_create_book(book_title, book_author, cover_url)
     
     # Đọc danh sách các chương đã dịch
@@ -162,8 +164,7 @@ def upload_chapters(translated_dir, original_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Công cụ đẩy các file Markdown truyện đã dịch lên Database.')
-    parser.add_argument('--translated-dir', default="chapters/Xich_Tam_Tuan_Thien_Translated", help='Thư mục chứa các file .md đã dịch')
-    parser.add_argument('--original-dir', default="chapters/Xich_Tam_Tuan_Thien", help='Thư mục chứa thông tin gốc của truyện')
+    parser.add_argument('--translated-dir', default="chapters/Xich_Tam_Tuan_Thien_Translated", help='Thư mục chứa các file .md đã dịch, theme.png và book_info.txt')
     args = parser.parse_args()
-    
-    upload_chapters(args.translated_dir, args.original_dir)
+
+    upload_chapters(args.translated_dir)
