@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ChapterReader from '@/components/ChapterReader';
 
 export const revalidate = 0;
 
@@ -68,78 +68,17 @@ export default async function ChapterPage({
   const currentNum = parseInt(params.chapterNum, 10);
 
   const prevNum = currentNum > 1 ? currentNum - 1 : null;
-  const nextNum = currentNum + 1; // Allows navigating to next chapter
+  const nextNum = currentNum < (book.chapter_count || 9999) ? currentNum + 1 : currentNum + 1;
 
   return (
-    <div className="max-w-3xl mx-auto py-6 flex flex-col gap-6">
-      {/* Navigation Breadcrumb */}
-      <div className="flex justify-between items-center text-sm text-gray-500 border-b pb-3">
-        <Link href={`/books/${book.id}`} className="hover:text-blue-600 font-medium">
-          &larr; {book.title}
-        </Link>
-        <span className="font-semibold text-gray-700">Chương {chapter.chapter_number}</span>
-      </div>
-
-      {/* Chapter Title */}
-      <div className="text-center my-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-snug">{chapter.title}</h1>
-      </div>
-
-      {/* Chapter Reader Controls Top */}
-      <div className="flex justify-between items-center py-2 px-4 bg-gray-50 rounded-lg text-sm font-medium">
-        {prevNum ? (
-          <Link
-            href={`/books/${book.id}/chapters/${prevNum}`}
-            className="text-blue-600 hover:underline"
-          >
-            &larr; Chương trước
-          </Link>
-        ) : (
-          <span className="text-gray-400">&larr; Chương trước</span>
-        )}
-
-        <Link href={`/books/${book.id}`} className="text-gray-600 hover:text-blue-600">
-          Mục lục
-        </Link>
-
-        <Link
-          href={`/books/${book.id}/chapters/${nextNum}`}
-          className="text-blue-600 hover:underline"
-        >
-          Chương sau &rarr;
-        </Link>
-      </div>
-
-      {/* Main Chapter Content */}
-      <div
-        className="prose prose-lg max-w-none text-gray-800 leading-relaxed font-serif bg-white p-6 md:p-10 rounded-xl shadow-sm border border-gray-100 whitespace-pre-wrap"
-        dangerouslySetInnerHTML={{ __html: chapter.content_html }}
-      />
-
-      {/* Chapter Reader Controls Bottom */}
-      <div className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg text-sm font-medium mt-4">
-        {prevNum ? (
-          <Link
-            href={`/books/${book.id}/chapters/${prevNum}`}
-            className="text-blue-600 hover:underline"
-          >
-            &larr; Chương trước
-          </Link>
-        ) : (
-          <span className="text-gray-400">&larr; Chương trước</span>
-        )}
-
-        <Link href={`/books/${book.id}`} className="text-gray-600 hover:text-blue-600">
-          Mục lục
-        </Link>
-
-        <Link
-          href={`/books/${book.id}/chapters/${nextNum}`}
-          className="text-blue-600 hover:underline"
-        >
-          Chương sau &rarr;
-        </Link>
-      </div>
-    </div>
+    <ChapterReader
+      bookId={book.id}
+      bookTitle={book.title}
+      chapterNumber={chapter.chapter_number}
+      chapterTitle={chapter.title}
+      contentHtml={chapter.content_html}
+      prevNum={prevNum}
+      nextNum={nextNum}
+    />
   );
 }

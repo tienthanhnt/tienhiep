@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin", "vietnamese"] });
-
 export const metadata: Metadata = {
-  title: "Website Đọc Truyện Tiên Hiệp",
-  description: "Trang đọc truyện tiên hiệp online miễn phí.",
+  title: "Tàng Kinh Các - Điện Đọc Truyện Tiên Hiệp",
+  description: "Trang đọc truyện tiên hiệp, huyền huyễn chất lượng cao với văn phong thuần Việt.",
 };
 
 export default function RootLayout({
@@ -16,26 +14,61 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className={inter.className}>
-        <header className="bg-white shadow-sm sticky top-0 z-50">
-          <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-            <div className="text-xl font-bold text-blue-600">TiênHiệp.net</div>
-            <nav className="hidden md:flex gap-6 text-sm font-medium">
-              <a href="#" className="hover:text-blue-600 transition-colors">Trang chủ</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Mới cập nhật</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Hoàn thành</a>
+      <body className="min-h-screen flex flex-col antialiased">
+        {/* Sticky Header */}
+        <header className="bg-[#181D27] text-[#E5DDCB] border-b border-[#C69C4E]/30 sticky top-0 z-50 shadow-md">
+          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C69C4E] to-[#8C6D2D] p-[1px] flex items-center justify-center shadow-inner">
+                <div className="w-full h-full bg-[#181D27] rounded-full flex items-center justify-center text-[#D4AF37] font-bold text-lg group-hover:bg-[#C69C4E] group-hover:text-[#181D27] transition-all">
+                  ☯
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-lg tracking-wider gold-gradient-text">TÀNG KINH CÁC</span>
+                <span className="text-[10px] text-[#A69C88] tracking-widest uppercase">Tiên Hiệp Thư Viện</span>
+              </div>
+            </Link>
+
+            {/* Navigation */}
+            <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+              <Link href="/" className="hover:text-[#D4AF37] transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#D4AF37] hover:after:w-full after:transition-all">
+                Trang Chủ
+              </Link>
+              <Link href="/" className="hover:text-[#D4AF37] transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#D4AF37] hover:after:w-full after:transition-all">
+                Mới Cập Nhật
+              </Link>
+              <Link href="/" className="hover:text-[#D4AF37] transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#D4AF37] hover:after:w-full after:transition-all">
+                Danh Sách Truyện
+              </Link>
             </nav>
-            <div className="flex items-center gap-4 text-sm font-medium">
-              <button className="text-gray-500 hover:text-blue-600">Tìm kiếm</button>
+
+            {/* Right Action */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs bg-[#242A38] border border-[#C69C4E]/20 text-[#C69C4E] px-3 py-1.5 rounded-full">
+                📜 Đọc Sách
+              </span>
             </div>
           </div>
         </header>
-        <main className="container mx-auto px-4 py-8">
+
+        {/* Main Content */}
+        <main className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
           {children}
         </main>
-        <footer className="bg-gray-800 text-white py-8 mt-12">
-          <div className="container mx-auto px-4 text-center text-sm text-gray-400">
-            &copy; 2026 TiênHiệp.net. Đọc truyện online miễn phí.
+
+        {/* Footer */}
+        <footer className="bg-[#13161F] text-[#8C8275] border-t border-[#C69C4E]/20 py-10 mt-16 text-sm">
+          <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <div>
+              <p className="font-semibold text-[#D4AF37] text-base mb-1">Tàng Kinh Các — Kho Tàng Tiên Hiệp Kỳ Ảo</p>
+              <p className="text-xs text-[#6B6357]">Không gian đọc truyện thư thái, trải nghiệm chữ mượt mà chuẩn văn phong.</p>
+            </div>
+            <div className="text-xs text-[#6B6357]">
+              &copy; 2026 Tàng Kinh Các. Bảo lưu mọi quyền.
+            </div>
           </div>
         </footer>
       </body>

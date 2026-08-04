@@ -1,6 +1,6 @@
 import BookCard from "@/components/BookCard";
 
-export const revalidate = 0; // Disable caching to fetch live data from Supabase
+export const revalidate = 0;
 
 const MOCK_BOOKS = [
   {
@@ -74,36 +74,46 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col gap-10">
-      {/* Banner Khuyến Nghị */}
-      <section className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-8 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">Thế Giới Tiên Hiệp Kỳ Ảo</h1>
-        <p className="opacity-90 max-w-2xl">
-          Đắm chìm vào những câu chuyện tu tiên, luyện đạo, vượt qua tam tai cửu kiếp để đạt được sự trường sinh bất lão. Cập nhật các tiểu thuyết huyền huyễn, tiên hiệp mới nhất và hay nhất.
-        </p>
+      {/* Banner Phong Cách Cổ Giấy / Tiên Hiệp */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E2533] via-[#181D27] to-[#2A2118] text-[#E5DDCB] p-8 md:p-10 border border-[#C69C4E]/40 shadow-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#C69C4E]/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="relative z-10 max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C69C4E]/15 border border-[#C69C4E]/30 text-[#D4AF37] text-xs font-semibold mb-4">
+            <span>⛩️ Thư Viện Tiên Hiệp</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-wide mb-3 font-cinzel text-white leading-tight">
+            Thế Giới Tu Tiên Kỳ Ảo
+          </h1>
+          <p className="text-sm md:text-base text-[#B8AE9C] leading-relaxed max-w-2xl font-serif-reading">
+            Đắm chìm vào những pho bí kíp tu tiên, vượt qua tam tai cửu kiếp, lĩnh hội thiên đạo trường sinh. Tất cả tác phẩm đều được trau chuốt văn phong thuần Việt mượt mà.
+          </p>
+        </div>
       </section>
 
       {/* Danh sách Truyện Mới Cập Nhật */}
       <section>
-        <div className="flex items-center justify-between mb-6 border-b pb-2 border-gray-200">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span className="w-1.5 h-6 bg-blue-600 inline-block rounded-sm"></span>
-            Tiên Hiệp Mới Cập Nhật
+        <div className="flex items-center justify-between mb-6 border-b border-[#C69C4E]/30 pb-3">
+          <h2 className="text-xl font-bold flex items-center gap-2.5 text-[#2C2825]">
+            <span className="w-1.5 h-6 bg-[#C69C4E] inline-block rounded-full"></span>
+            Tiểu Thuyết Mới Cập Nhật
           </h2>
-          <a href="#" className="text-sm text-blue-600 hover:underline font-medium">Xem tất cả &rarr;</a>
+          <span className="text-xs text-[#A37B34] font-semibold tracking-wide">TỔNG HỢP TIÊN HIỆP</span>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-x-4 gap-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-5 gap-y-8">
           {booksToDisplay.map((book) => (
             <BookCard key={book.id} {...book} />
           ))}
         </div>
       </section>
 
-      {/* SEO Section */}
-      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-4">
-        <h2 className="text-lg font-bold mb-3 text-gray-800">Tiên Hiệp - Thể loại dẫn đầu xu hướng</h2>
-        <p className="text-sm text-gray-600 leading-relaxed mb-3">
-          <strong>Tiên Hiệp</strong> là thể loại truyện xoay quanh quá trình tu luyện, tìm kiếm sự trường sinh và sức mạnh vượt qua giới hạn của phàm nhân. Các nhân vật thường phải trải qua nhiều khó khăn, rèn luyện thân thể và tinh thần, thu thập kỳ trân dị thảo, và chiến đấu với yêu thú hoặc các thế lực tông môn đồ sộ.
+      {/* Giới thiệu Đọc Truyện */}
+      <section className="ancient-card p-6 md:p-8 rounded-xl border border-[#C69C4E]/30 mt-4">
+        <h2 className="text-lg font-bold mb-3 text-[#2C2825] flex items-center gap-2">
+          <span>📜</span> Không Gian Đọc Truyện Chuẩn Văn Phong
+        </h2>
+        <p className="text-sm text-[#5C5449] leading-relaxed mb-3 font-serif-reading">
+          Tàng Kinh Các là nơi lưu giữ những bản dịch tiểu thuyết Tiên Hiệp được biên tập kỹ lưỡng. Từng câu chữ được gọt giũa thuần Việt, giữ nguyên tinh thần võ học và thần thoại phương Đông.
         </p>
       </section>
     </div>

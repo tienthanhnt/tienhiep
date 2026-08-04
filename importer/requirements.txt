@@ -1,0 +1,6 @@
+EbookLib==0.18
+beautifulsoup4==4.12.3
+supabase
+python-dotenv==1.0.0
+google-genai==0.3.0
+markdown==3.6

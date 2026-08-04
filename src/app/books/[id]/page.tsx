@@ -65,50 +65,67 @@ export default async function BookDetailPage({ params }: { params: { id: string 
 
   return (
     <div className="flex flex-col gap-8 max-w-4xl mx-auto py-4">
-      {/* Header / Meta */}
-      <div className="flex flex-col md:flex-row gap-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      {/* Back button */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-[#8C8373] hover:text-[#A37B34] font-medium w-fit">
+        &larr; Trở về Trang Chủ
+      </Link>
+
+      {/* Book Info Header */}
+      <div className="ancient-card p-6 md:p-8 rounded-2xl flex flex-col md:flex-row gap-8 border border-[#C69C4E]/30">
         <img
           src={book.cover_url || "https://images.unsplash.com/photo-1541963463532-d68292c34b19"}
           alt={book.title}
-          className="w-44 h-64 object-cover rounded-lg shadow-md self-center md:self-start"
+          className="w-48 h-68 object-cover rounded-xl shadow-lg border border-[#C69C4E]/40 self-center md:self-start shrink-0"
         />
         <div className="flex flex-col justify-between flex-1 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{book.title}</h1>
-            <p className="text-gray-600 text-sm mb-4">Tác giả: <span className="font-medium text-gray-800">{book.author || "Chưa rõ"}</span></p>
-            <div className="flex gap-3 text-sm">
-              <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">Trạng thái: {book.status || "Đang ra"}</span>
-              <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full font-medium">Đánh giá: ⭐ {book.rating || 8.0}</span>
-              <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium">{chapters.length} chương</span>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#2C2825] mb-3 leading-snug">{book.title}</h1>
+            <p className="text-[#6B6357] text-sm mb-4">Tác giả: <span className="font-semibold text-[#2C2825]">{book.author || "Chưa rõ"}</span></p>
+            
+            <div className="flex flex-wrap gap-2.5 text-xs font-semibold">
+              <span className="bg-[#181D27] text-[#D4AF37] px-3 py-1.5 rounded-md border border-[#C69C4E]/30">
+                {book.status || "Đang ra"}
+              </span>
+              <span className="bg-[#EFE9DC] text-[#7A5B1E] px-3 py-1.5 rounded-md border border-[#C69C4E]/30">
+                ⭐ {book.rating ? Number(book.rating).toFixed(1) : "8.0"} / 10
+              </span>
+              <span className="bg-[#EFE9DC] text-[#4A443A] px-3 py-1.5 rounded-md border border-[#C69C4E]/30">
+                📜 {chapters.length} chương
+              </span>
             </div>
           </div>
 
           {chapters.length > 0 && (
             <Link
               href={`/books/${book.id}/chapters/${chapters[0].chapter_number}`}
-              className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg transition-colors w-fit"
+              className="inline-flex items-center justify-center bg-gradient-to-r from-[#A37B34] to-[#C69C4E] hover:from-[#8C6627] hover:to-[#A37B34] text-white font-bold px-7 py-3 rounded-xl shadow-md transition-all w-fit gap-2"
             >
-              Đọc từ chương đầu
+              <span>📖</span> Đọc từ chương 1
             </Link>
           )}
         </div>
       </div>
 
-      {/* Danh sách chương */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-xl font-bold mb-4 border-b pb-2">Danh Sách Chương ({chapters.length})</h2>
+      {/* Chapters Table */}
+      <div className="ancient-card p-6 md:p-8 rounded-2xl border border-[#C69C4E]/30">
+        <h2 className="text-xl font-bold text-[#2C2825] mb-5 border-b border-[#C69C4E]/20 pb-3 flex items-center gap-2">
+          <span>📚</span> Mục Lục Chương ({chapters.length})
+        </h2>
+
         {chapters.length === 0 ? (
-          <p className="text-gray-500 py-4 text-center">Chưa có chương nào được upload.</p>
+          <p className="text-[#8C8373] py-6 text-center text-sm">Chưa có chương nào được upload.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {chapters.map((ch) => (
               <Link
                 key={ch.id}
                 href={`/books/${book.id}/chapters/${ch.chapter_number}`}
-                className="p-3 rounded-lg hover:bg-blue-50 text-gray-700 hover:text-blue-700 text-sm font-medium transition-colors flex justify-between items-center border border-gray-50"
+                className="p-3.5 rounded-xl bg-white/60 hover:bg-[#EFE9DC] text-[#2C2825] hover:text-[#A37B34] text-sm font-medium transition-all flex justify-between items-center border border-[#E8E0D2] hover:border-[#C69C4E]/40"
               >
                 <span className="truncate">{ch.title}</span>
-                <span className="text-xs text-gray-400 shrink-0 ml-2">Chương {ch.chapter_number}</span>
+                <span className="text-xs text-[#8C8373] shrink-0 ml-3 bg-[#E8E0D2]/60 px-2 py-0.5 rounded">
+                  Chương {ch.chapter_number}
+                </span>
               </Link>
             ))}
           </div>

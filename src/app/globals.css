@@ -1,7 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Cinzel:wght@500;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-parchment: #F6F2E9;
+  --text-ink: #2C2825;
+  --accent-gold: #C69C4E;
+  --accent-jade: #2D6A4F;
+  --accent-crimson: #9E2A2B;
+}
+
 body {
-  @apply bg-gray-50 text-gray-900;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  background-color: #F6F2E9;
+  color: #2C2825;
+  background-image: radial-gradient(#E8E0D2 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.font-serif-reading {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #EFE9DC;
+}
+::-webkit-scrollbar-thumb {
+  background: #C69C4E;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A37B34;
+}
+
+/* Glow & Ancient Chinese Glass Box Effect */
+.ancient-card {
+  background: rgba(255, 253, 248, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(198, 156, 78, 0.25);
+  box-shadow: 0 4px 20px -2px rgba(44, 40, 37, 0.05);
+}
+
+.ancient-card:hover {
+  border-color: rgba(198, 156, 78, 0.6);
+  box-shadow: 0 10px 30px -4px rgba(198, 156, 78, 0.2);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 50%, #AA7C11 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Reader Themes */
+.reader-theme-parchment {
+  background-color: #F4EFE6;
+  color: #2D2A26;
+}
+
+.reader-theme-dark {
+  background-color: #171A21;
+  color: #D3CDC1;
+}
+
+.reader-theme-white {
+  background-color: #FFFFFF;
+  color: #1A1A1A;
 }
