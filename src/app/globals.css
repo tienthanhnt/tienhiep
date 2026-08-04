@@ -4,76 +4,84 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-parchment: #F6F2E9;
-  --text-ink: #2C2825;
-  --accent-gold: #C69C4E;
-  --accent-jade: #2D6A4F;
-  --accent-crimson: #9E2A2B;
-}
+/* ──────────────────────────────────────────────────
+   Bồng Lai Tiên Cảnh Aesthetic
+   Palette: Mist Blue + Antique Gold + Deep Ink
+   ────────────────────────────────────────────────── */
 
 body {
   font-family: 'Be Vietnam Pro', sans-serif;
-  background-color: #F6F2E9;
-  color: #2C2825;
-  background-image: radial-gradient(#E8E0D2 1px, transparent 1px);
-  background-size: 32px 32px;
+  color: #1E1A16;
+
+  /* Nền: sương mù bồng lai — xanh băng lạnh pha sữa */
+  background-color: #EAF0F6;
+  background-image:
+    /* Áng mây trắng trái */
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(255,255,255,0.85) 0%, transparent 55%),
+    /* Áng mây sáng phải */
+    radial-gradient(ellipse 60% 50% at 90% 5%, rgba(245,249,255,0.9) 0%, transparent 50%),
+    /* Hào quang vàng bồng lai ở giữa, phía dưới */
+    radial-gradient(ellipse 70% 40% at 50% 100%, rgba(248,240,220,0.6) 0%, transparent 60%),
+    /* Nền băng xanh tổng thể */
+    linear-gradient(180deg, #DCE9F5 0%, #F0F4F0 40%, #F5F0E8 100%);
+  background-attachment: fixed;
 }
 
+/* Typography */
 .font-serif-reading {
   font-family: 'Merriweather', Georgia, serif;
 }
-
 .font-cinzel {
   font-family: 'Cinzel', serif;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #EFE9DC;
-}
-::-webkit-scrollbar-thumb {
-  background: #C69C4E;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #A37B34;
-}
-
-/* Glow & Ancient Chinese Glass Box Effect */
-.ancient-card {
-  background: rgba(255, 253, 248, 0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(198, 156, 78, 0.25);
-  box-shadow: 0 4px 20px -2px rgba(44, 40, 37, 0.05);
-}
-
-.ancient-card:hover {
-  border-color: rgba(198, 156, 78, 0.6);
-  box-shadow: 0 10px 30px -4px rgba(198, 156, 78, 0.2);
-}
-
+/* ── Gold gradient text ── */
 .gold-gradient-text {
-  background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 50%, #AA7C11 100%);
+  background: linear-gradient(135deg, #C69C4E 0%, #F0D080 50%, #A07028 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Reader Themes */
-.reader-theme-parchment {
-  background-color: #F4EFE6;
-  color: #2D2A26;
+/* ── Ornamental Divider  ── */
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #C69C4E;
+  opacity: 0.6;
+}
+.ornament-divider::before,
+.ornament-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #C69C4E, transparent);
 }
 
-.reader-theme-dark {
-  background-color: #171A21;
-  color: #D3CDC1;
+/* ── Card Glass ── */
+.celestial-card {
+  background: rgba(255, 252, 248, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(198, 156, 78, 0.22);
+  box-shadow:
+    0 4px 24px -4px rgba(20, 40, 80, 0.06),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.celestial-card:hover {
+  border-color: rgba(198, 156, 78, 0.5);
+  box-shadow:
+    0 12px 40px -6px rgba(20, 40, 80, 0.1),
+    inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
-.reader-theme-white {
-  background-color: #FFFFFF;
-  color: #1A1A1A;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #DCE9F5; }
+::-webkit-scrollbar-thumb { background: #C69C4E; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #A37B34; }
+
+/* Reader themes */
+.reader-parchment { background-color: #F5EFE3; color: #2C2825; }
+.reader-dark { background-color: #13171F; color: #CEC8BB; }
+.reader-white { background-color: #FFFFFF; color: #1A1A1A; }
