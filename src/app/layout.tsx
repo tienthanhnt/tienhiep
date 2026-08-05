@@ -19,8 +19,8 @@ export default function RootLayout({
         <header className="sticky top-0 z-50 border-b border-[#DDD5C8] bg-[#FBFAF7]/95 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5 shrink-0 text-[#29241E]">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md border border-[#D8CDBB] bg-[#F4EFE6] text-sm font-bold">
-                TK
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#F4EFE6] text-[#8A6A32] text-lg leading-none">
+                ☯
               </span>
               <span className="font-bold text-base tracking-wide">Tàng Kinh Các</span>
             </Link>

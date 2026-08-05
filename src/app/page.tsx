@@ -63,14 +63,16 @@ export default async function Home() {
     : MOCK_BOOKS;
 
   return (
-    <div className="flex flex-col gap-7">
-      <section className="border-b border-[#DDD5C8] pb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#26211C] leading-tight">
+    <div className="flex flex-col gap-8">
+      <section className="text-center pt-3 pb-8 border-b border-[#DDD5C8]">
+        <div className="mx-auto mb-4 h-px w-28 bg-[#D8CDBB]" />
+        <h1 className="text-3xl md:text-5xl font-bold text-[#26211C] leading-tight tracking-wide">
           Tàng Kinh Các
         </h1>
-        <p className="mt-2 text-sm md:text-base text-[#6F675D]">
-          Thư viện truyện gọn nhẹ, tập trung vào trải nghiệm đọc.
+        <p className="mt-3 text-sm md:text-base text-[#5E5448] font-serif-reading italic">
+          &ldquo;Độc vạn quyển thư, hành vạn lý lộ, phá vạn trùng quan.&rdquo;
         </p>
+        <div className="mx-auto mt-5 h-px w-20 bg-[#D8CDBB]" />
       </section>
 
       <section>
