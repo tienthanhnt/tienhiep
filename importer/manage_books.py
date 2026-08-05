@@ -121,7 +121,10 @@ def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str
         supabase.storage.from_(CONTENT_STORAGE_BUCKET).upload(
             content_path,
             html_content.encode("utf-8"),
-            {"content-type": "text/html; charset=utf-8"}
+            {
+                "content-type": "text/html; charset=utf-8",
+                "cache-control": "3600"
+            }
         )
         return content_path, supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
     except Exception as e:

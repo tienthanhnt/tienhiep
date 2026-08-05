@@ -26,21 +26,25 @@ async function getChapterData(bookId: string, chapterNum: string) {
   if (!url || !key) return null;
 
   try {
-    const resBook = await fetch(`${url}/rest/v1/books?id=eq.${bookId}`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-      cache: 'no-store',
-    });
+    const headers = { apikey: key, Authorization: `Bearer ${key}` };
+    const [resBook, resChapter] = await Promise.all([
+      fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,chapter_count`, {
+        headers,
+        cache: 'no-store',
+      }),
+      fetch(
+        `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=id,book_id,chapter_number,title,content_html,content_url,content_path`,
+        {
+          headers,
+          cache: 'no-store',
+        }
+      ),
+    ]);
+
     if (!resBook.ok) return null;
     const books = await resBook.json();
     if (!books || books.length === 0) return null;
 
-    const resChapter = await fetch(
-      `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}`,
-      {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-        cache: 'no-store',
-      }
-    );
     if (!resChapter.ok) return null;
     const chapters = await resChapter.json();
     if (!chapters || chapters.length === 0) return null;
@@ -49,7 +53,9 @@ async function getChapterData(bookId: string, chapterNum: string) {
     let contentHtml = chapter.content_html || "";
 
     if (!contentHtml && chapter.content_url) {
-      const resContent = await fetch(chapter.content_url, { cache: 'no-store' });
+      const resContent = await fetch(chapter.content_url, {
+        next: { revalidate: 3600 },
+      });
       if (!resContent.ok) return null;
       contentHtml = await resContent.text();
     }

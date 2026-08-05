@@ -22,3 +22,5 @@ importer/*.pyc
 .DS_Store
 *.log
 Thumbs.db
+# Ignore all generated chapter files
+importer/chapters/
