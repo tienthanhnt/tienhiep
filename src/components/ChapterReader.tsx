@@ -162,7 +162,7 @@ export default function ChapterReader({
         {renderChapterLink(prevHref, prevNum, '← Chương Trước', '← Chương Trước')}
 
         <Link href={`/books/${bookId}`} className="text-[#A37B34] hover:underline">
-          📚 Mục Lục
+          Mục Lục
         </Link>
 
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
@@ -186,7 +186,7 @@ export default function ChapterReader({
         {renderChapterLink(prevHref, prevNum, '← Chương Trước', '← Chương Trước')}
 
         <Link href={`/books/${bookId}`} className="text-[#A37B34] hover:underline">
-          📚 Mục Lục
+          Mục Lục
         </Link>
 
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}

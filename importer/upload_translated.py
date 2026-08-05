@@ -21,7 +21,7 @@ SUPABASE_URL_BASE = url
 STORAGE_BUCKET = "covers"
 CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
-UPLOADABLE_DIR_SUFFIXES = ("_Translated", "_Convert")
+UPLOADABLE_DIR_SUFFIX = "_Translated"
 
 
 def safe_storage_name(value: str) -> str:
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--scan-dir',
         default="chapters",
-        help='Thư mục cha để tự động tìm tất cả thư mục *_Translated hoặc *_Convert bên trong.\n'
+        help='Thư mục cha để tự động tìm tất cả thư mục *_Translated bên trong.\n'
              'Mặc định: chapters/  (bỏ qua nếu đã truyền --translated-dir)'
     )
     args = parser.parse_args()
@@ -244,31 +244,30 @@ if __name__ == "__main__":
         # Upload 1 truyện cụ thể
         upload_chapters(args.translated_dir)
     else:
-        # Tự động quét và upload tất cả thư mục *_Translated hoặc *_Convert
+        # Tự động quét và upload tất cả thư mục *_Translated
         scan_root = args.scan_dir
         if not os.path.isdir(scan_root):
             print(f"❌ Không tìm thấy thư mục: {scan_root}")
             sys.exit(1)
 
-        uploadable_dirs = sorted([
+        translated_dirs = sorted([
             os.path.join(scan_root, d)
             for d in os.listdir(scan_root)
-            if os.path.isdir(os.path.join(scan_root, d)) and d.endswith(UPLOADABLE_DIR_SUFFIXES)
+            if os.path.isdir(os.path.join(scan_root, d)) and d.endswith(UPLOADABLE_DIR_SUFFIX)
         ])
 
-        if not uploadable_dirs:
-            suffixes = ", ".join(UPLOADABLE_DIR_SUFFIXES)
-            print(f"⚠️  Không tìm thấy thư mục nào kết thúc bằng {suffixes} trong '{scan_root}'")
+        if not translated_dirs:
+            print(f"⚠️  Không tìm thấy thư mục nào kết thúc bằng '{UPLOADABLE_DIR_SUFFIX}' trong '{scan_root}'")
             sys.exit(1)
 
-        print(f"\n📚 Tìm thấy {len(uploadable_dirs)} bộ truyện cần upload:")
-        for i, d in enumerate(uploadable_dirs, 1):
+        print(f"\n📚 Tìm thấy {len(translated_dirs)} bộ truyện cần upload:")
+        for i, d in enumerate(translated_dirs, 1):
             print(f"   {i}. {d}")
         print()
 
-        for d in uploadable_dirs:
+        for d in translated_dirs:
             print(f"\n{'='*60}")
             upload_chapters(d)
 
         print(f"\n{'='*60}")
-        print(f"🏆 Đã xử lý xong tất cả {len(uploadable_dirs)} bộ truyện!")
+        print(f"🏆 Đã xử lý xong tất cả {len(translated_dirs)} bộ truyện!")

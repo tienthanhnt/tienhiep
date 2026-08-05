@@ -1,85 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Cinzel:wght@500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ──────────────────────────────────────────────────
-   Bồng Lai Tiên Cảnh Aesthetic
-   Palette: Mist Blue + Antique Gold + Deep Ink
-   ────────────────────────────────────────────────── */
-
 body {
   font-family: 'Be Vietnam Pro', sans-serif;
   color: #1E1A16;
-
-  /* Nền: sương mù bồng lai — xanh băng lạnh pha sữa */
-  background-color: #EAF0F6;
-  background-image:
-    /* Áng mây trắng trái */
-    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(255,255,255,0.85) 0%, transparent 55%),
-    /* Áng mây sáng phải */
-    radial-gradient(ellipse 60% 50% at 90% 5%, rgba(245,249,255,0.9) 0%, transparent 50%),
-    /* Hào quang vàng bồng lai ở giữa, phía dưới */
-    radial-gradient(ellipse 70% 40% at 50% 100%, rgba(248,240,220,0.6) 0%, transparent 60%),
-    /* Nền băng xanh tổng thể */
-    linear-gradient(180deg, #DCE9F5 0%, #F0F4F0 40%, #F5F0E8 100%);
-  background-attachment: fixed;
+  background: #F7F4ED;
 }
 
 /* Typography */
 .font-serif-reading {
   font-family: 'Merriweather', Georgia, serif;
 }
-.font-cinzel {
-  font-family: 'Cinzel', serif;
-}
-
-/* ── Gold gradient text ── */
-.gold-gradient-text {
-  background: linear-gradient(135deg, #C69C4E 0%, #F0D080 50%, #A07028 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* ── Ornamental Divider  ── */
-.ornament-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #C69C4E;
-  opacity: 0.6;
-}
-.ornament-divider::before,
-.ornament-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, transparent, #C69C4E, transparent);
-}
-
-/* ── Card Glass ── */
-.celestial-card {
-  background: rgba(255, 252, 248, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(198, 156, 78, 0.22);
-  box-shadow:
-    0 4px 24px -4px rgba(20, 40, 80, 0.06),
-    inset 0 1px 0 rgba(255,255,255,0.8);
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
-}
-.celestial-card:hover {
-  border-color: rgba(198, 156, 78, 0.5);
-  box-shadow:
-    0 12px 40px -6px rgba(20, 40, 80, 0.1),
-    inset 0 1px 0 rgba(255,255,255,0.9);
-}
-
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: #DCE9F5; }
-::-webkit-scrollbar-thumb { background: #C69C4E; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #A37B34; }
+::-webkit-scrollbar-track { background: #EFEAE1; }
+::-webkit-scrollbar-thumb { background: #B9AD9D; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #8C8373; }
 
 /* Reader themes */
 .reader-parchment { background-color: #F5EFE3; color: #2C2825; }

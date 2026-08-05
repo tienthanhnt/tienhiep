@@ -15,7 +15,7 @@
 web/importer/
 ├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY)
 ├── chapters/
-│   └── Ten_Truyen_Translated/         ← Một bộ truyện (folder kết thúc bằng _Translated hoặc _Convert)
+│   └── Ten_Truyen_Translated/         ← Một bộ truyện (folder kết thúc bằng _Translated)
 │       ├── book_info.txt              ← Metadata
 │       ├── theme.png                  ← Ảnh bìa
 │       ├── 0001_Ten_chuong.md
@@ -25,7 +25,7 @@ web/importer/
 └── manage_books.py                    ← Quản lý / xóa / đồng bộ
 ```
 
-**Nội dung `book_info.txt`** (bắt buộc trong mỗi thư mục `_Translated` hoặc `_Convert`):
+**Nội dung `book_info.txt`** (bắt buộc trong mỗi thư mục `_Translated`):
 ```
 title=Xích Tâm Tuần Thiên
 author=Tình Hà Dĩ Thậm
@@ -63,7 +63,7 @@ chapter-content
 Từ lúc này, nội dung chương mới sẽ được lưu trong Storage, còn PostgreSQL chỉ giữ metadata và đường dẫn nội dung.
 
 ```bash
-# Upload TẤT CẢ thư mục *_Translated và *_Convert trong chapters/ (khuyến nghị)
+# Upload TẤT CẢ thư mục *_Translated trong chapters/ (khuyến nghị)
 python upload_translated.py
 
 # Upload chỉ 1 bộ truyện

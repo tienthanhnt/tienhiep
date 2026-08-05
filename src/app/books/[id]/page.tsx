@@ -16,7 +16,6 @@ interface Book {
   author: string;
   cover_url: string;
   status: string;
-  rating: number;
   chapter_count: number;
 }
 
@@ -71,11 +70,11 @@ export default async function BookDetailPage({ params }: { params: { id: string 
       </Link>
 
       {/* Book Info Header */}
-      <div className="ancient-card p-6 md:p-8 rounded-2xl flex flex-col md:flex-row gap-8 border border-[#C69C4E]/30">
+      <div className="p-5 md:p-6 rounded-lg flex flex-col md:flex-row gap-7 border border-[#DDD5C8] bg-[#FBFAF7]">
         <img
           src={book.cover_url || "https://images.unsplash.com/photo-1541963463532-d68292c34b19"}
           alt={book.title}
-          className="w-48 h-68 object-cover rounded-xl shadow-lg border border-[#C69C4E]/40 self-center md:self-start shrink-0"
+          className="w-44 h-64 object-cover rounded-md border border-[#DDD5C8] self-center md:self-start shrink-0"
         />
         <div className="flex flex-col justify-between flex-1 gap-4">
           <div>
@@ -83,14 +82,11 @@ export default async function BookDetailPage({ params }: { params: { id: string 
             <p className="text-[#6B6357] text-sm mb-4">Tác giả: <span className="font-semibold text-[#2C2825]">{book.author || "Chưa rõ"}</span></p>
             
             <div className="flex flex-wrap gap-2.5 text-xs font-semibold">
-              <span className="bg-[#181D27] text-[#D4AF37] px-3 py-1.5 rounded-md border border-[#C69C4E]/30">
+              <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
                 {book.status || "Đang ra"}
               </span>
-              <span className="bg-[#EFE9DC] text-[#7A5B1E] px-3 py-1.5 rounded-md border border-[#C69C4E]/30">
-                ⭐ {book.rating ? Number(book.rating).toFixed(1) : "8.0"} / 10
-              </span>
-              <span className="bg-[#EFE9DC] text-[#4A443A] px-3 py-1.5 rounded-md border border-[#C69C4E]/30">
-                📜 {chapters.length} chương
+              <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
+                {chapters.length} chương
               </span>
             </div>
           </div>
@@ -98,18 +94,18 @@ export default async function BookDetailPage({ params }: { params: { id: string 
           {chapters.length > 0 && (
             <Link
               href={`/books/${book.id}/chapters/${chapters[0].chapter_number}`}
-              className="inline-flex items-center justify-center bg-gradient-to-r from-[#A37B34] to-[#C69C4E] hover:from-[#8C6627] hover:to-[#A37B34] text-white font-bold px-7 py-3 rounded-xl shadow-md transition-all w-fit gap-2"
+              className="inline-flex items-center justify-center bg-[#2C2825] hover:bg-[#4A443A] text-white font-semibold px-6 py-2.5 rounded-md transition-colors w-fit"
             >
-              <span>📖</span> Đọc từ chương 1
+              Đọc từ chương 1
             </Link>
           )}
         </div>
       </div>
 
       {/* Chapters Table */}
-      <div className="ancient-card p-6 md:p-8 rounded-2xl border border-[#C69C4E]/30">
-        <h2 className="text-xl font-bold text-[#2C2825] mb-5 border-b border-[#C69C4E]/20 pb-3 flex items-center gap-2">
-          <span>📚</span> Mục Lục Chương ({chapters.length})
+      <div className="p-5 md:p-6 rounded-lg border border-[#DDD5C8] bg-[#FBFAF7]">
+        <h2 className="text-lg font-bold text-[#2C2825] mb-5 border-b border-[#DDD5C8] pb-3">
+          Danh sách chương ({chapters.length})
         </h2>
 
         {chapters.length === 0 ? (
@@ -120,10 +116,10 @@ export default async function BookDetailPage({ params }: { params: { id: string 
               <Link
                 key={ch.id}
                 href={`/books/${book.id}/chapters/${ch.chapter_number}`}
-                className="p-3.5 rounded-xl bg-white/60 hover:bg-[#EFE9DC] text-[#2C2825] hover:text-[#A37B34] text-sm font-medium transition-all flex justify-between items-center border border-[#E8E0D2] hover:border-[#C69C4E]/40"
+                className="p-3 rounded-md bg-white hover:bg-[#F4EFE6] text-[#2C2825] hover:text-[#7A5B1E] text-sm font-medium transition-colors flex justify-between items-center border border-[#E8E0D2]"
               >
                 <span className="truncate">{ch.title}</span>
-                <span className="text-xs text-[#8C8373] shrink-0 ml-3 bg-[#E8E0D2]/60 px-2 py-0.5 rounded">
+                <span className="text-xs text-[#8C8373] shrink-0 ml-3">
                   Chương {ch.chapter_number}
                 </span>
               </Link>

@@ -52,7 +52,7 @@ supabase: Client = create_client(url, key)
 STORAGE_BUCKET = "covers"
 CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&q=80"
-UPLOADABLE_DIR_SUFFIXES = ("_Translated", "_Convert")
+UPLOADABLE_DIR_SUFFIX = "_Translated"
 
 
 # ─────────────────────────────────────────
@@ -404,11 +404,11 @@ def cmd_resync(translated_dir: str, force: bool = False):
 
 
 def cmd_resync_all(scan_dir: str = "chapters", force: bool = False):
-    """Resync tất cả thư mục *_Translated hoặc *_Convert trong scan_dir."""
+    """Resync tất cả thư mục *_Translated trong scan_dir."""
     translated_dirs = sorted([
         os.path.join(scan_dir, d)
         for d in os.listdir(scan_dir)
-        if os.path.isdir(os.path.join(scan_dir, d)) and d.endswith(UPLOADABLE_DIR_SUFFIXES)
+        if os.path.isdir(os.path.join(scan_dir, d)) and d.endswith(UPLOADABLE_DIR_SUFFIX)
     ])
     if not translated_dirs:
         print(f"⚠️  Không tìm thấy thư mục nào trong '{scan_dir}'")
