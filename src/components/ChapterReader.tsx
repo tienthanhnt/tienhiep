@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -22,8 +23,23 @@ export default function ChapterReader({
   prevNum,
   nextNum,
 }: ChapterReaderProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [fontSize, setFontSize] = useState<number>(19); // Default 19px for super comfortable reading
   const [theme, setTheme] = useState<'parchment' | 'dark' | 'white'>('parchment');
+  const [loadingChapter, setLoadingChapter] = useState<number | null>(null);
+
+  const prevHref = prevNum ? `/books/${bookId}/chapters/${prevNum}` : null;
+  const nextHref = nextNum ? `/books/${bookId}/chapters/${nextNum}` : null;
+
+  useEffect(() => {
+    if (prevHref) router.prefetch(prevHref);
+    if (nextHref) router.prefetch(nextHref);
+  }, [nextHref, prevHref, router]);
+
+  useEffect(() => {
+    setLoadingChapter(null);
+  }, [pathname]);
 
   const getThemeClass = () => {
     switch (theme) {
@@ -36,8 +52,49 @@ export default function ChapterReader({
     }
   };
 
+  const renderChapterLink = (
+    href: string | null,
+    targetChapter: number | null,
+    label: string,
+    disabledLabel: string
+  ) => {
+    if (!href || !targetChapter) {
+      return (
+        <span className="px-4 py-2 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed min-w-[118px] text-center">
+          {disabledLabel}
+        </span>
+      );
+    }
+
+    const isLoading = loadingChapter === targetChapter;
+
+    return (
+      <Link
+        href={href}
+        prefetch
+        onMouseEnter={() => router.prefetch(href)}
+        onTouchStart={() => router.prefetch(href)}
+        onClick={() => setLoadingChapter(targetChapter)}
+        aria-busy={isLoading}
+        className={`px-4 py-2 rounded-lg text-[#5C5449] transition-all border border-[#C69C4E]/20 min-w-[118px] text-center ${
+          isLoading
+            ? 'bg-[#C69C4E] text-white cursor-wait shadow-sm'
+            : 'bg-[#EFE9DC] hover:bg-[#C69C4E] hover:text-white'
+        }`}
+      >
+        {isLoading ? 'Đang tải...' : label}
+      </Link>
+    );
+  };
+
   return (
     <div className="max-w-3xl mx-auto py-4 flex flex-col gap-6">
+      {loadingChapter !== null && (
+        <div className="fixed left-0 right-0 top-0 z-[60] h-1 bg-[#E8E0D2]">
+          <div className="h-full w-1/2 animate-pulse bg-[#C69C4E]" />
+        </div>
+      )}
+
       {/* Top Header Navigation */}
       <div className="flex flex-wrap justify-between items-center text-xs text-[#7A7365] border-b border-[#C69C4E]/20 pb-3 gap-2">
         <Link href={`/books/${bookId}`} className="hover:text-[#A37B34] font-medium flex items-center gap-1">
@@ -102,35 +159,13 @@ export default function ChapterReader({
 
       {/* Navigation Buttons Top */}
       <div className="flex justify-between items-center text-xs font-semibold">
-        {prevNum ? (
-          <Link
-            href={`/books/${bookId}/chapters/${prevNum}`}
-            className="px-4 py-2 rounded-lg bg-[#EFE9DC] hover:bg-[#C69C4E] hover:text-white text-[#5C5449] transition-all border border-[#C69C4E]/20"
-          >
-            &larr; Chương Trước
-          </Link>
-        ) : (
-          <span className="px-4 py-2 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">
-            &larr; Chương Trước
-          </span>
-        )}
+        {renderChapterLink(prevHref, prevNum, '← Chương Trước', '← Chương Trước')}
 
         <Link href={`/books/${bookId}`} className="text-[#A37B34] hover:underline">
           📚 Mục Lục
         </Link>
 
-        {nextNum ? (
-          <Link
-            href={`/books/${bookId}/chapters/${nextNum}`}
-            className="px-4 py-2 rounded-lg bg-[#EFE9DC] hover:bg-[#C69C4E] hover:text-white text-[#5C5449] transition-all border border-[#C69C4E]/20"
-          >
-            Chương Sau &rarr;
-          </Link>
-        ) : (
-          <span className="px-4 py-2 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">
-            Chương Sau &rarr;
-          </span>
-        )}
+        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
 
       {/* Main Chapter Title & Reading Content */}
@@ -148,35 +183,13 @@ export default function ChapterReader({
 
       {/* Navigation Buttons Bottom */}
       <div className="flex justify-between items-center text-xs font-semibold mt-4">
-        {prevNum ? (
-          <Link
-            href={`/books/${bookId}/chapters/${prevNum}`}
-            className="px-4 py-2 rounded-lg bg-[#EFE9DC] hover:bg-[#C69C4E] hover:text-white text-[#5C5449] transition-all border border-[#C69C4E]/20"
-          >
-            &larr; Chương Trước
-          </Link>
-        ) : (
-          <span className="px-4 py-2 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">
-            &larr; Chương Trước
-          </span>
-        )}
+        {renderChapterLink(prevHref, prevNum, '← Chương Trước', '← Chương Trước')}
 
         <Link href={`/books/${bookId}`} className="text-[#A37B34] hover:underline">
           📚 Mục Lục
         </Link>
 
-        {nextNum ? (
-          <Link
-            href={`/books/${bookId}/chapters/${nextNum}`}
-            className="px-4 py-2 rounded-lg bg-[#EFE9DC] hover:bg-[#C69C4E] hover:text-white text-[#5C5449] transition-all border border-[#C69C4E]/20"
-          >
-            Chương Sau &rarr;
-          </Link>
-        ) : (
-          <span className="px-4 py-2 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">
-            Chương Sau &rarr;
-          </span>
-        )}
+        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
     </div>
   );
