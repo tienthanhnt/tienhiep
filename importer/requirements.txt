@@ -4,3 +4,4 @@ supabase
 python-dotenv==1.0.0
 google-genai==0.3.0
 markdown==3.6
+boto3==1.34.162
