@@ -1,7 +1,155 @@
-# Website đọc truyện
+# Tàng Kinh Các — Hướng Dẫn Sử Dụng
 
-> Trạng thái: **Tài liệu thiết kế để review — chưa bắt đầu viết mã nguồn**  
+> **Domain:** https://vercel.com/tienhiep/tienhiep/settings/domains  
+> **Supabase:** https://ebekineyghlxlpljeiww.supabase.co
+
+---
+
+## ⚡ Quick Reference — Python Toolchain
+
+> Tất cả lệnh chạy từ thư mục: `web/importer/`
+
+### 📁 Cấu Trúc Thư Mục
+
+```
+web/importer/
+├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY)
+├── chapters/
+│   └── Ten_Truyen_Translated/         ← Một bộ truyện (tên folder kết thúc bằng _Translated)
+│       ├── book_info.txt              ← Metadata
+│       ├── theme.png                  ← Ảnh bìa
+│       ├── 0001_Ten_chuong.md
+│       └── 0002_Ten_chuong.md
+├── translate_chapters.py              ← Dịch raw → Markdown
+├── upload_translated.py               ← Upload lên Supabase
+└── manage_books.py                    ← Quản lý / xóa / đồng bộ
+```
+
+**Nội dung `book_info.txt`** (bắt buộc trong mỗi thư mục `_Translated`):
+```
+title=Xích Tâm Tuần Thiên
+author=Tình Hà Dĩ Thậm
+```
+> ⚠️ Giá trị `title=` là tên dùng trong tất cả lệnh `manage_books.py` — **không phải tên folder**.
+
+---
+
+### BƯỚC 1 — Dịch Truyện
+
+```bash
+# Dịch toàn bộ file raw sang Markdown (AI translation)
+python translate_chapters.py \
+  --source-dir chapters/Ten_Truyen_Raw \
+  --target-dir chapters/Ten_Truyen_Translated
+```
+
+---
+
+### BƯỚC 2 — Upload Lên Supabase
+
+```bash
+# Upload TẤT CẢ thư mục *_Translated trong chapters/ (khuyến nghị)
+python upload_translated.py
+
+# Upload chỉ 1 bộ truyện
+python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated
+
+# Upload từ thư mục cha khác
+python upload_translated.py --scan-dir /duong/dan/khac
+```
+> ✅ Script tự động bỏ qua chương đã tồn tại — chạy nhiều lần không bị trùng.
+
+---
+
+### BƯỚC 3 — Quản Lý Truyện
+
+#### Xem danh sách
+```bash
+# Tất cả truyện trong DB
+python manage_books.py list
+
+# Danh sách chương của 1 truyện
+python manage_books.py list-chapters "Xích Tâm Tuần Thiên"
+```
+
+#### Xóa chương
+```bash
+# Xóa 1 chương cụ thể
+python manage_books.py delete-chapter "Xích Tâm Tuần Thiên" 5
+
+# Xóa nhiều chương cùng lúc
+python manage_books.py delete-chapter "Xích Tâm Tuần Thiên" 5 6 10
+
+# Xóa TOÀN BỘ chương (giữ lại thông tin truyện)
+python manage_books.py delete-chapters "Xích Tâm Tuần Thiên"
+```
+
+#### Xóa truyện
+```bash
+# Xóa truyện + toàn bộ chương
+python manage_books.py delete-book "Xích Tâm Tuần Thiên"
+```
+
+#### Đồng bộ lại (Resync)
+```bash
+# Xóa chương cũ rồi upload lại 1 truyện từ đầu
+python manage_books.py resync --translated-dir chapters/Xich_Tam_Tuan_Thien_Translated
+
+# Đồng bộ lại TẤT CẢ truyện
+python manage_books.py resync-all
+
+# Thêm --yes để bỏ qua hỏi xác nhận
+python manage_books.py resync-all --yes
+```
+
+---
+
+### 🔧 Workflow Khi Gặp Lỗi
+
+**Sửa 1 vài chương bị lỗi:**
+```bash
+# 1. Xóa chương lỗi
+python manage_books.py delete-chapter "Tên Truyện" 3 7
+
+# 2. Upload lại (chỉ chương mới sẽ được thêm)
+python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated
+```
+
+**Upload lại toàn bộ 1 truyện từ đầu:**
+```bash
+python manage_books.py resync --translated-dir chapters/Ten_Truyen_Translated
+```
+
+**Xóa và tạo lại hoàn toàn:**
+```bash
+python manage_books.py delete-book "Tên Truyện"
+python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated
+```
+
+---
+
+### 📌 Bảng Tóm Tắt Nhanh
+
+| Mục đích | Lệnh |
+|---|---|
+| Dịch truyện | `python translate_chapters.py --source-dir ... --target-dir ...` |
+| Upload tất cả | `python upload_translated.py` |
+| Upload 1 truyện | `python upload_translated.py --translated-dir chapters/...` |
+| Xem truyện trong DB | `python manage_books.py list` |
+| Xem chương của truyện | `python manage_books.py list-chapters "Tên"` |
+| Xóa 1 chương | `python manage_books.py delete-chapter "Tên" 5` |
+| Xóa nhiều chương | `python manage_books.py delete-chapter "Tên" 5 6 10` |
+| Xóa toàn bộ chương | `python manage_books.py delete-chapters "Tên"` |
+| Xóa cả truyện | `python manage_books.py delete-book "Tên"` |
+| Resync 1 truyện | `python manage_books.py resync --translated-dir chapters/...` |
+| Resync tất cả | `python manage_books.py resync-all` |
+
+---
+
+## 📐 Tài Liệu Thiết Kế Gốc
+
 > Tham khảo trải nghiệm: [MTruyen](https://mtruyen.net/), nhưng không sao chép thương hiệu, nội dung hoặc tài sản hình ảnh.
+
 
 ## 1. Tổng quan
 
