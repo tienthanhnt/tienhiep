@@ -15,7 +15,7 @@
 web/importer/
 ├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY)
 ├── chapters/
-│   └── Ten_Truyen_Translated/         ← Một bộ truyện (tên folder kết thúc bằng _Translated)
+│   └── Ten_Truyen_Translated/         ← Một bộ truyện (folder kết thúc bằng _Translated hoặc _Convert)
 │       ├── book_info.txt              ← Metadata
 │       ├── theme.png                  ← Ảnh bìa
 │       ├── 0001_Ten_chuong.md
@@ -25,7 +25,7 @@ web/importer/
 └── manage_books.py                    ← Quản lý / xóa / đồng bộ
 ```
 
-**Nội dung `book_info.txt`** (bắt buộc trong mỗi thư mục `_Translated`):
+**Nội dung `book_info.txt`** (bắt buộc trong mỗi thư mục `_Translated` hoặc `_Convert`):
 ```
 title=Xích Tâm Tuần Thiên
 author=Tình Hà Dĩ Thậm
@@ -47,8 +47,23 @@ python translate_chapters.py \
 
 ### BƯỚC 2 — Upload Lên Supabase
 
+Trước khi upload theo cơ chế tiết kiệm database, tạo thêm 2 cột trong bảng `chapters`:
+
+```sql
+ALTER TABLE chapters ADD COLUMN IF NOT EXISTS content_path TEXT;
+ALTER TABLE chapters ADD COLUMN IF NOT EXISTS content_url TEXT;
+```
+
+Trong Supabase Storage, tạo bucket Public tên:
+
+```text
+chapter-content
+```
+
+Từ lúc này, nội dung chương mới sẽ được lưu trong Storage, còn PostgreSQL chỉ giữ metadata và đường dẫn nội dung.
+
 ```bash
-# Upload TẤT CẢ thư mục *_Translated trong chapters/ (khuyến nghị)
+# Upload TẤT CẢ thư mục *_Translated và *_Convert trong chapters/ (khuyến nghị)
 python upload_translated.py
 
 # Upload chỉ 1 bộ truyện

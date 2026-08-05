@@ -8,7 +8,9 @@ interface Chapter {
   book_id: number;
   chapter_number: number;
   title: string;
-  content_html: string;
+  content_html?: string | null;
+  content_url?: string | null;
+  content_path?: string | null;
 }
 
 interface Book {
@@ -43,9 +45,21 @@ async function getChapterData(bookId: string, chapterNum: string) {
     const chapters = await resChapter.json();
     if (!chapters || chapters.length === 0) return null;
 
+    const chapter = chapters[0] as Chapter;
+    let contentHtml = chapter.content_html || "";
+
+    if (!contentHtml && chapter.content_url) {
+      const resContent = await fetch(chapter.content_url, { cache: 'no-store' });
+      if (!resContent.ok) return null;
+      contentHtml = await resContent.text();
+    }
+
+    if (!contentHtml) return null;
+
     return {
       book: books[0] as Book,
-      chapter: chapters[0] as Chapter,
+      chapter,
+      contentHtml,
     };
   } catch (err) {
     console.error("Error fetching chapter:", err);
@@ -64,7 +78,7 @@ export default async function ChapterPage({
     notFound();
   }
 
-  const { book, chapter } = data;
+  const { book, chapter, contentHtml } = data;
   const currentNum = parseInt(params.chapterNum, 10);
 
   const prevNum = currentNum > 1 ? currentNum - 1 : null;
@@ -76,7 +90,7 @@ export default async function ChapterPage({
       bookTitle={book.title}
       chapterNumber={chapter.chapter_number}
       chapterTitle={chapter.title}
-      contentHtml={chapter.content_html}
+      contentHtml={contentHtml}
       prevNum={prevNum}
       nextNum={nextNum}
     />

@@ -19,7 +19,14 @@ supabase: Client = create_client(url, key)
 
 SUPABASE_URL_BASE = url
 STORAGE_BUCKET = "covers"
+CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
+UPLOADABLE_DIR_SUFFIXES = ("_Translated", "_Convert")
+
+
+def safe_storage_name(value: str) -> str:
+    safe_name = re.sub(r"[^a-zA-Z0-9_]+", "_", value).strip("_").lower()
+    return safe_name[:80] or "chapter"
 
 
 def upload_cover_image(translated_dir: str, book_title: str) -> str:
@@ -54,6 +61,46 @@ def upload_cover_image(translated_dir: str, book_title: str) -> str:
         return DEFAULT_COVER
 
 
+def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str, html_content: str) -> tuple[str, str]:
+    """Upload nội dung chương lên Storage. Trả về (content_path, public_url)."""
+    safe_title = safe_storage_name(chapter_title)
+    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html"
+
+    try:
+        try:
+            supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove([content_path])
+        except Exception:
+            pass
+
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).upload(
+            content_path,
+            html_content.encode("utf-8"),
+            {"content-type": "text/html; charset=utf-8"}
+        )
+        public_url = supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
+        return content_path, public_url
+    except Exception as e:
+        print(f"❌ Lỗi upload nội dung chương {chapter_number}: {e}")
+        print(f"   Gợi ý: Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' (Public) trong Supabase Storage.")
+        raise
+
+
+def validate_content_storage_setup():
+    try:
+        supabase.table("chapters").select("id, content_path, content_url").limit(1).execute()
+    except Exception as e:
+        print("❌ Bảng chapters chưa có cột content_path/content_url.")
+        print("   Hãy chạy SQL trong README trước khi upload.")
+        raise e
+
+    try:
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).list("", {"limit": 1})
+    except Exception as e:
+        print(f"❌ Không truy cập được bucket Storage '{CONTENT_STORAGE_BUCKET}'.")
+        print(f"   Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' và đặt Public trong Supabase Storage.")
+        raise e
+
+
 def get_or_create_book(title, author, cover_url=DEFAULT_COVER):
     # Kiểm tra xem truyện đã có trên DB chưa
     res = supabase.table("books").select("id").eq("title", title).execute()
@@ -82,6 +129,7 @@ def get_or_create_book(title, author, cover_url=DEFAULT_COVER):
 
 def upload_chapters(translated_dir):
     print(f"📖 Đang đọc các chương từ: {translated_dir}")
+    validate_content_storage_setup()
 
     # Lấy thông tin truyện từ book_info.txt trong thư mục Translated
     book_title = "Chưa đặt tên"
@@ -135,11 +183,20 @@ def upload_chapters(translated_dir):
         if len(res.data) > 0:
             print(f"[-] Bỏ qua Chương {chapter_number}: Đã có trên Database.")
             continue
+
+        content_path, content_url = upload_chapter_content(
+            book_id,
+            chapter_number,
+            chapter_title,
+            html_content
+        )
             
         chapters_to_insert.append({
             "book_id": book_id,
             "title": chapter_title,
-            "content_html": html_content,
+            "content_html": "",
+            "content_path": content_path,
+            "content_url": content_url,
             "chapter_number": chapter_number
         })
         
@@ -163,8 +220,52 @@ def upload_chapters(translated_dir):
     print("🎉 Quá trình Upload lên Web hoàn tất!")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Công cụ đẩy các file Markdown truyện đã dịch lên Database.')
-    parser.add_argument('--translated-dir', default="chapters/Xich_Tam_Tuan_Thien_Translated", help='Thư mục chứa các file .md đã dịch, theme.png và book_info.txt')
+    parser = argparse.ArgumentParser(
+        description='Công cụ đẩy các file Markdown truyện đã dịch lên Database.',
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        '--translated-dir',
+        default=None,
+        help='Thư mục chứa file .md đã dịch của MỘT truyện (ví dụ: chapters/Xich_Tam_Tuan_Thien_Translated)'
+    )
+    parser.add_argument(
+        '--scan-dir',
+        default="chapters",
+        help='Thư mục cha để tự động tìm tất cả thư mục *_Translated hoặc *_Convert bên trong.\n'
+             'Mặc định: chapters/  (bỏ qua nếu đã truyền --translated-dir)'
+    )
     args = parser.parse_args()
 
-    upload_chapters(args.translated_dir)
+    if args.translated_dir:
+        # Upload 1 truyện cụ thể
+        upload_chapters(args.translated_dir)
+    else:
+        # Tự động quét và upload tất cả thư mục *_Translated hoặc *_Convert
+        scan_root = args.scan_dir
+        if not os.path.isdir(scan_root):
+            print(f"❌ Không tìm thấy thư mục: {scan_root}")
+            sys.exit(1)
+
+        uploadable_dirs = sorted([
+            os.path.join(scan_root, d)
+            for d in os.listdir(scan_root)
+            if os.path.isdir(os.path.join(scan_root, d)) and d.endswith(UPLOADABLE_DIR_SUFFIXES)
+        ])
+
+        if not uploadable_dirs:
+            suffixes = ", ".join(UPLOADABLE_DIR_SUFFIXES)
+            print(f"⚠️  Không tìm thấy thư mục nào kết thúc bằng {suffixes} trong '{scan_root}'")
+            sys.exit(1)
+
+        print(f"\n📚 Tìm thấy {len(uploadable_dirs)} bộ truyện cần upload:")
+        for i, d in enumerate(uploadable_dirs, 1):
+            print(f"   {i}. {d}")
+        print()
+
+        for d in uploadable_dirs:
+            print(f"\n{'='*60}")
+            upload_chapters(d)
+
+        print(f"\n{'='*60}")
+        print(f"🏆 Đã xử lý xong tất cả {len(uploadable_dirs)} bộ truyện!")
