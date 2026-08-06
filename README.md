@@ -13,7 +13,7 @@
 
 ```
 web/importer/
-├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY, R2_*)
+├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY)
 ├── chapters/
 │   └── Ten_Truyen_Translated/         ← Một bộ truyện (folder kết thúc bằng _Translated)
 │       ├── book_info.txt              ← Metadata
@@ -45,7 +45,7 @@ python translate_chapters.py \
 
 ---
 
-### BƯỚC 2 — Upload Lên Supabase + Cloudflare R2
+### BƯỚC 2 — Upload Lên Supabase
 
 Trước khi upload theo cơ chế tiết kiệm database, tạo thêm 2 cột trong bảng `chapters`:
 
@@ -54,31 +54,13 @@ ALTER TABLE chapters ADD COLUMN IF NOT EXISTS content_path TEXT;
 ALTER TABLE chapters ADD COLUMN IF NOT EXISTS content_url TEXT;
 ```
 
-Nội dung chương được lưu ở Cloudflare R2 để tiết kiệm Supabase Database/Storage. Trong Cloudflare R2, tạo bucket:
+Trong Supabase Storage, tạo bucket Public tên:
 
 ```text
 chapter-content
 ```
 
-Tạo R2 API token có quyền Object Read/Write cho bucket, rồi thêm vào `web/importer/.env`:
-
-```env
-R2_ACCOUNT_ID=YOUR_CLOUDFLARE_ACCOUNT_ID
-R2_ACCESS_KEY_ID=YOUR_R2_ACCESS_KEY_ID
-R2_SECRET_ACCESS_KEY=YOUR_R2_SECRET_ACCESS_KEY
-R2_BUCKET=chapter-content
-R2_PUBLIC_BASE_URL=https://your-public-r2-domain.example.com
-```
-
-`R2_PUBLIC_BASE_URL` là URL public của bucket hoặc custom domain đã gắn với R2, không có dấu `/` ở cuối.
-
-Từ lúc này, nội dung chương mới sẽ được lưu trong R2, còn PostgreSQL chỉ giữ metadata và đường dẫn nội dung.
-
-Nếu môi trường Python đã cài trước đó, cài lại dependency để có `boto3`:
-
-```bash
-pip install -r requirements.txt
-```
+Từ lúc này, nội dung chương mới sẽ được nén gzip rồi lưu trong Storage, còn PostgreSQL chỉ giữ metadata và đường dẫn nội dung.
 
 ```bash
 # Upload TẤT CẢ thư mục *_Translated trong chapters/ (khuyến nghị)

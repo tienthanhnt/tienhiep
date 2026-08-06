@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import ChapterReader from '@/components/ChapterReader';
+import { gunzipSync } from 'zlib';
 
 export const revalidate = 0;
+export const runtime = 'nodejs';
 
 interface Chapter {
   id: number;
@@ -17,6 +19,25 @@ interface Book {
   id: number;
   title: string;
   chapter_count: number;
+}
+
+async function fetchChapterContent(chapter: Chapter) {
+  if (!chapter.content_url) return "";
+
+  const resContent = await fetch(chapter.content_url, {
+    next: { revalidate: 3600 },
+  });
+  if (!resContent.ok) return "";
+
+  const isCompressed =
+    chapter.content_path?.endsWith(".gz") || chapter.content_url.endsWith(".gz");
+
+  if (!isCompressed) {
+    return resContent.text();
+  }
+
+  const compressed = Buffer.from(await resContent.arrayBuffer());
+  return gunzipSync(compressed).toString("utf-8");
 }
 
 async function getChapterData(bookId: string, chapterNum: string) {
@@ -53,11 +74,7 @@ async function getChapterData(bookId: string, chapterNum: string) {
     let contentHtml = chapter.content_html || "";
 
     if (!contentHtml && chapter.content_url) {
-      const resContent = await fetch(chapter.content_url, {
-        next: { revalidate: 3600 },
-      });
-      if (!resContent.ok) return null;
-      contentHtml = await resContent.text();
+      contentHtml = await fetchChapterContent(chapter);
     }
 
     if (!contentHtml) return null;

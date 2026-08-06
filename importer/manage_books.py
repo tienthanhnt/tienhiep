@@ -34,6 +34,7 @@ import os
 import sys
 import re
 import argparse
+import gzip
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import markdown
@@ -50,17 +51,9 @@ if not url or not key:
 supabase: Client = create_client(url, key)
 
 STORAGE_BUCKET = "covers"
-LEGACY_CONTENT_STORAGE_BUCKET = "chapter-content"
+CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&q=80"
 UPLOADABLE_DIR_SUFFIX = "_Translated"
-R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID")
-R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
-R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
-R2_BUCKET = os.environ.get("R2_BUCKET", "chapter-content")
-R2_PUBLIC_BASE_URL = (os.environ.get("R2_PUBLIC_BASE_URL") or "").rstrip("/")
-R2_ENDPOINT_URL = os.environ.get("R2_ENDPOINT_URL") or (
-    f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else None
-)
 
 
 # ─────────────────────────────────────────
@@ -118,38 +111,29 @@ def upload_cover(translated_dir: str, book_title: str) -> str:
 
 
 def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str, html_content: str) -> tuple[str, str]:
-    """Upload nội dung chương lên Cloudflare R2. Trả về (content_path, public_url)."""
+    """Upload nội dung chương lên Storage. Trả về (content_path, public_url)."""
     safe_title = safe_storage_name(chapter_title)
-    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html"
+    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html.gz"
     try:
-        r2_client().put_object(
-            Bucket=R2_BUCKET,
-            Key=content_path,
-            Body=html_content.encode("utf-8"),
-            ContentType="text/html; charset=utf-8",
-            CacheControl="public, max-age=3600",
+        try:
+            supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove([content_path])
+        except Exception:
+            pass
+        compressed_html = gzip.compress(html_content.encode("utf-8"), compresslevel=9)
+
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).upload(
+            content_path,
+            compressed_html,
+            {
+                "content-type": "application/gzip",
+                "cache-control": "3600"
+            }
         )
-        return content_path, f"{R2_PUBLIC_BASE_URL}/{content_path}"
+        return content_path, supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
     except Exception as e:
         print(f"❌ Lỗi upload nội dung chương {chapter_number}: {e}")
-        print("   Hãy kiểm tra R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE_URL.")
+        print(f"   Gợi ý: Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' (Public) trong Supabase Storage.")
         raise
-
-
-def r2_client():
-    try:
-        import boto3
-    except ImportError as e:
-        print("❌ Thiếu thư viện boto3. Hãy chạy: pip install -r requirements.txt")
-        raise e
-
-    return boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT_URL,
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name="auto",
-    )
 
 
 def validate_content_storage_setup():
@@ -160,80 +144,37 @@ def validate_content_storage_setup():
         print("   Hãy chạy SQL trong README trước khi upload hoặc resync.")
         raise e
 
-    missing = [
-        name for name, value in {
-            "R2_ACCOUNT_ID hoặc R2_ENDPOINT_URL": R2_ACCOUNT_ID or R2_ENDPOINT_URL,
-            "R2_ACCESS_KEY_ID": R2_ACCESS_KEY_ID,
-            "R2_SECRET_ACCESS_KEY": R2_SECRET_ACCESS_KEY,
-            "R2_BUCKET": R2_BUCKET,
-            "R2_PUBLIC_BASE_URL": R2_PUBLIC_BASE_URL,
-        }.items()
-        if not value
-    ]
-    if missing:
-        print("❌ Thiếu cấu hình Cloudflare R2 trong file .env:")
-        for name in missing:
-            print(f"   - {name}")
-        sys.exit(1)
-
     try:
-        r2_client().head_bucket(Bucket=R2_BUCKET)
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).list("", {"limit": 1})
     except Exception as e:
-        print(f"❌ Không truy cập được R2 bucket '{R2_BUCKET}'.")
-        print("   Hãy kiểm tra bucket, token R2 và quyền Object Read/Write.")
+        print(f"❌ Không truy cập được bucket Storage '{CONTENT_STORAGE_BUCKET}'.")
+        print(f"   Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' và đặt Public trong Supabase Storage.")
         raise e
 
 
 def delete_chapter_content_paths(paths: list[str]):
-    """Xóa file nội dung chương trên R2 theo danh sách path, bỏ qua lỗi để không chặn DB cleanup."""
+    """Xóa file nội dung chương trên Storage theo danh sách path, bỏ qua lỗi để không chặn DB cleanup."""
     paths = [path for path in paths if path]
     if not paths:
         return
     try:
-        client = r2_client()
-        for path in paths:
-            client.delete_object(Bucket=R2_BUCKET, Key=path)
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove(paths)
     except Exception as e:
-        print(f"⚠️  Không xóa được một số file nội dung trên R2: {e}")
-
-
-def delete_legacy_supabase_chapter_content_paths(paths: list[str]):
-    """Xóa file chương cũ trong Supabase Storage theo path, nếu còn tồn tại."""
-    paths = [path for path in paths if path]
-    if not paths:
-        return
-    try:
-        supabase.storage.from_(LEGACY_CONTENT_STORAGE_BUCKET).remove(paths)
-    except Exception:
-        pass
+        print(f"⚠️  Không xóa được một số file nội dung trên Storage: {e}")
 
 
 def delete_book_content_files(book_id: int):
-    """Xóa toàn bộ file nội dung chương của một truyện trên R2."""
+    """Xóa toàn bộ file nội dung chương của một truyện trên Storage."""
     try:
-        client = r2_client()
-        prefix = f"{book_id}/"
-        response = client.list_objects_v2(Bucket=R2_BUCKET, Prefix=prefix)
-        keys = [item["Key"] for item in response.get("Contents", []) if item.get("Key")]
-        delete_chapter_content_paths(keys)
-    except Exception as e:
-        print(f"⚠️  Không dọn được thư mục nội dung R2 của book ID={book_id}: {e}")
-
-
-def delete_legacy_supabase_book_content_files(book_id: int):
-    """Dọn nội dung chương cũ còn nằm ở Supabase Storage trước khi migrate sang R2."""
-    try:
-        files = supabase.storage.from_(LEGACY_CONTENT_STORAGE_BUCKET).list(str(book_id))
+        files = supabase.storage.from_(CONTENT_STORAGE_BUCKET).list(str(book_id))
         paths = [
             f"{book_id}/{item['name']}"
             for item in files
             if item.get("name")
         ]
-        if paths:
-            supabase.storage.from_(LEGACY_CONTENT_STORAGE_BUCKET).remove(paths)
-            print(f"🧹 Đã dọn {len(paths)} file chương cũ trong Supabase Storage.")
-    except Exception:
-        pass
+        delete_chapter_content_paths(paths)
+    except Exception as e:
+        print(f"⚠️  Không dọn được thư mục nội dung Storage của book ID={book_id}: {e}")
 
 
 def upload_all_chapters(book_id: int, translated_dir: str):
@@ -319,7 +260,6 @@ def cmd_delete_book(title: str, confirm: bool = False):
             return
 
     delete_book_content_files(book["id"])
-    delete_legacy_supabase_book_content_files(book["id"])
     # Xóa chương trước
     supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
     # Xóa truyện
@@ -395,7 +335,6 @@ def cmd_delete_chapter(title: str, chapter_nums: list, confirm: bool = False):
     for ch in found:
         supabase.table("chapters").delete().eq("id", ch["id"]).execute()
         delete_chapter_content_paths([ch.get("content_path")])
-        delete_legacy_supabase_chapter_content_paths([ch.get("content_path")])
         print(f"🗑️  Đã xóa: Chương {ch['chapter_number']} — {ch['title']}")
 
     # Cập nhật lại chapter_count
@@ -420,7 +359,6 @@ def cmd_delete_chapters(title: str, confirm: bool = False):
             return
 
     delete_book_content_files(book["id"])
-    delete_legacy_supabase_book_content_files(book["id"])
     supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
     supabase.table("books").update({"chapter_count": 0}).eq("id", book["id"]).execute()
     print(f"🗑️  Đã xóa toàn bộ chương. Thông tin truyện vẫn còn trong DB.")
@@ -445,7 +383,6 @@ def cmd_resync(translated_dir: str, force: bool = False):
                 return
         # Xóa tất cả chương cũ
         delete_book_content_files(book["id"])
-        delete_legacy_supabase_book_content_files(book["id"])
         supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
         supabase.table("books").update({"chapter_count": 0}).eq("id", book["id"]).execute()
         print(f"🗑️  Đã xóa chương cũ của '{title}'")

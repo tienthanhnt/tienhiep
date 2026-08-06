@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import argparse
+import gzip
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import markdown
@@ -19,16 +20,9 @@ supabase: Client = create_client(url, key)
 
 SUPABASE_URL_BASE = url
 STORAGE_BUCKET = "covers"
+CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
 UPLOADABLE_DIR_SUFFIX = "_Translated"
-R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID")
-R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
-R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
-R2_BUCKET = os.environ.get("R2_BUCKET", "chapter-content")
-R2_PUBLIC_BASE_URL = (os.environ.get("R2_PUBLIC_BASE_URL") or "").rstrip("/")
-R2_ENDPOINT_URL = os.environ.get("R2_ENDPOINT_URL") or (
-    f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else None
-)
 
 
 def safe_storage_name(value: str) -> str:
@@ -69,40 +63,32 @@ def upload_cover_image(translated_dir: str, book_title: str) -> str:
 
 
 def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str, html_content: str) -> tuple[str, str]:
-    """Upload nội dung chương lên Cloudflare R2. Trả về (content_path, public_url)."""
+    """Upload nội dung chương lên Storage. Trả về (content_path, public_url)."""
     safe_title = safe_storage_name(chapter_title)
-    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html"
+    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html.gz"
 
     try:
-        r2_client().put_object(
-            Bucket=R2_BUCKET,
-            Key=content_path,
-            Body=html_content.encode("utf-8"),
-            ContentType="text/html; charset=utf-8",
-            CacheControl="public, max-age=3600",
+        try:
+            supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove([content_path])
+        except Exception:
+            pass
+
+        compressed_html = gzip.compress(html_content.encode("utf-8"), compresslevel=9)
+
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).upload(
+            content_path,
+            compressed_html,
+            {
+                "content-type": "application/gzip",
+                "cache-control": "3600"
+            }
         )
-        public_url = f"{R2_PUBLIC_BASE_URL}/{content_path}"
+        public_url = supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
         return content_path, public_url
     except Exception as e:
         print(f"❌ Lỗi upload nội dung chương {chapter_number}: {e}")
-        print("   Hãy kiểm tra R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE_URL.")
+        print(f"   Gợi ý: Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' (Public) trong Supabase Storage.")
         raise
-
-
-def r2_client():
-    try:
-        import boto3
-    except ImportError as e:
-        print("❌ Thiếu thư viện boto3. Hãy chạy: pip install -r requirements.txt")
-        raise e
-
-    return boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT_URL,
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name="auto",
-    )
 
 
 def validate_content_storage_setup():
@@ -113,27 +99,11 @@ def validate_content_storage_setup():
         print("   Hãy chạy SQL trong README trước khi upload.")
         raise e
 
-    missing = [
-        name for name, value in {
-            "R2_ACCOUNT_ID hoặc R2_ENDPOINT_URL": R2_ACCOUNT_ID or R2_ENDPOINT_URL,
-            "R2_ACCESS_KEY_ID": R2_ACCESS_KEY_ID,
-            "R2_SECRET_ACCESS_KEY": R2_SECRET_ACCESS_KEY,
-            "R2_BUCKET": R2_BUCKET,
-            "R2_PUBLIC_BASE_URL": R2_PUBLIC_BASE_URL,
-        }.items()
-        if not value
-    ]
-    if missing:
-        print("❌ Thiếu cấu hình Cloudflare R2 trong file .env:")
-        for name in missing:
-            print(f"   - {name}")
-        sys.exit(1)
-
     try:
-        r2_client().head_bucket(Bucket=R2_BUCKET)
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).list("", {"limit": 1})
     except Exception as e:
-        print(f"❌ Không truy cập được R2 bucket '{R2_BUCKET}'.")
-        print("   Hãy kiểm tra bucket, token R2 và quyền Object Read/Write.")
+        print(f"❌ Không truy cập được bucket Storage '{CONTENT_STORAGE_BUCKET}'.")
+        print(f"   Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' và đặt Public trong Supabase Storage.")
         raise e
 
 
