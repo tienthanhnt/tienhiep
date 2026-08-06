@@ -53,6 +53,8 @@ def convert_to_chapters(epub_path: str, output_dir: str):
 
     chapter_index = 1
     skipped = 0
+    existing = 0
+    created = 0
 
     for item in book.get_items():
         if item.get_type() != ebooklib.ITEM_DOCUMENT:
@@ -83,19 +85,25 @@ def convert_to_chapters(epub_path: str, output_dir: str):
         file_name = f"{chapter_index:04d}_{sanitize_filename(chapter_title)}.md"
         file_path = os.path.join(book_folder, file_name)
 
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(f"# {chapter_title}\n\n")
-            f.write("\n\n".join(paragraphs))
+        if os.path.exists(file_path):
+            existing += 1
+            print(f"  [skip {chapter_index:04d}] {chapter_title[:60]}")
+        else:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(f"# {chapter_title}\n\n")
+                f.write("\n\n".join(paragraphs))
+            created += 1
+            print(f"  [{chapter_index:04d}] {chapter_title[:60]}")
 
-        print(f"  [{chapter_index:04d}] {chapter_title[:60]}")
         chapter_index += 1
 
     total = chapter_index - 1
-    print(f"\n✅ Hoàn tất! Đã tách {total} chương → thư mục: {book_folder}")
+    print(f"\n✅ Hoàn tất! Tổng {total} chương → thư mục: {book_folder}")
+    print(f"   Tạo mới {created} file, bỏ qua {existing} file đã có.")
     print(f"   (Bỏ qua {skipped} trang phụ không phải nội dung)")
     print(f"\n📌 Bước tiếp theo:")
-    print(f"   1. Dịch từng file trong thư mục '{book_folder}/'")
-    print(f"   2. Chạy importer.py để upload lên Database\n")
+    print(f"   1. Dịch Markdown trong thư mục '{book_folder}/' bằng translate_chapters.py")
+    print(f"   2. Chạy upload_translated.py để upload lên Supabase\n")
 
 
 if __name__ == "__main__":

@@ -15,11 +15,13 @@
 web/importer/
 ├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY)
 ├── chapters/
-│   └── Ten_Truyen_Translated/         ← Một bộ truyện (folder kết thúc bằng _Translated)
+│   ├── Ten_Truyen/                    ← Markdown tách từ EPUB, chưa dịch
+│   └── Ten_Truyen_Translated/         ← Markdown đã dịch, folder kết thúc bằng _Translated
 │       ├── book_info.txt              ← Metadata
 │       ├── theme.png                  ← Ảnh bìa
 │       ├── 0001_Ten_chuong.md
 │       └── 0002_Ten_chuong.md
+├── epub_to_md.py                      ← Tách EPUB → Markdown theo chương
 ├── translate_chapters.py              ← Dịch raw → Markdown
 ├── upload_translated.py               ← Upload lên Supabase
 └── manage_books.py                    ← Quản lý / xóa / đồng bộ
@@ -34,18 +36,49 @@ author=Tình Hà Dĩ Thậm
 
 ---
 
-### BƯỚC 1 — Dịch Truyện
+### BƯỚC 1 — Tách EPUB Thành Markdown
+
+`epub_to_md.py` đọc metadata `title/author` trong file EPUB, tạo thư mục riêng trong `chapters/`, ghi `book_info.txt`, rồi tách từng chương thành file Markdown dạng:
+
+```text
+chapters/Ten_Truyen/
+├── book_info.txt
+├── 0001_Ten_chuong.md
+└── 0002_Ten_chuong.md
+```
+
+```bash
+# Tách 1 file EPUB vào thư mục chapters/
+python epub_to_md.py /duong/dan/truyen.epub chapters
+
+# Tách tất cả file .epub trong 1 thư mục
+python epub_to_md.py /duong/dan/thu_muc_epub chapters
+
+# Nếu không truyền output_dir, mặc định là ./chapters
+python epub_to_md.py /duong/dan/truyen.epub
+```
+
+Lưu ý:
+- Script chỉ nhận tham số vị trí, hiện chưa có `--help`.
+- Folder tạo ra chưa có đuôi `_Translated`, nên chưa được `upload_translated.py` upload tự động.
+- Sau khi tách EPUB, chạy bước dịch để tạo folder `_Translated`.
+
+---
+
+### BƯỚC 2 — Dịch Truyện
 
 ```bash
 # Dịch toàn bộ file raw sang Markdown (AI translation)
 python translate_chapters.py \
-  --source-dir chapters/Ten_Truyen_Raw \
+  --source-dir chapters/Ten_Truyen \
   --target-dir chapters/Ten_Truyen_Translated
+
+python translate_chapters.py --limit 250 # Default Dich Xich Tam only
 ```
 
 ---
 
-### BƯỚC 2 — Upload Lên Supabase
+### BƯỚC 3 — Upload Lên Supabase
 
 Trước khi upload theo cơ chế tiết kiệm database, tạo thêm 2 cột trong bảng `chapters`:
 
@@ -76,7 +109,7 @@ python upload_translated.py --scan-dir /duong/dan/khac
 
 ---
 
-### BƯỚC 3 — Quản Lý Truyện
+### BƯỚC 4 — Quản Lý Truyện
 
 #### Xem danh sách
 ```bash
@@ -147,6 +180,7 @@ python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated
 
 | Mục đích | Lệnh |
 |---|---|
+| Tách EPUB thành Markdown | `python epub_to_md.py /duong/dan/truyen.epub chapters` |
 | Dịch truyện | `python translate_chapters.py --source-dir ... --target-dir ...` |
 | Upload tất cả | `python upload_translated.py` |
 | Upload 1 truyện | `python upload_translated.py --translated-dir chapters/...` |
