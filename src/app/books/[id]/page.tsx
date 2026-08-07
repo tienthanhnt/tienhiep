@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
 
-export const revalidate = 0;
+export const revalidate = 3600;
 
 interface Chapter {
   id: number;
@@ -29,7 +29,7 @@ async function getBookDetails(id: string) {
   try {
     const resBook = await fetch(`${url}/rest/v1/books?id=eq.${id}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
-      cache: 'no-store',
+      next: { revalidate: 3600 },
     });
     if (!resBook.ok) return null;
     const books = await resBook.json();
@@ -39,7 +39,7 @@ async function getBookDetails(id: string) {
       `${url}/rest/v1/chapters?book_id=eq.${id}&select=id,chapter_number,title,created_at&order=chapter_number.asc`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       }
     );
     const chapters = resChapters.ok ? await resChapters.json() : [];

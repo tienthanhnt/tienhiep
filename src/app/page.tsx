@@ -1,7 +1,7 @@
 import BookCard from "@/components/BookCard";
 import RecentReading from "@/components/RecentReading";
 
-export const revalidate = 0;
+export const revalidate = 300;
 
 const MOCK_BOOKS = [
   {
@@ -41,7 +41,7 @@ async function getBooks() {
   try {
     const res = await fetch(`${url}/rest/v1/books?select=*&order=created_at.desc`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
-      cache: 'no-store',
+      next: { revalidate: 300 },
     });
     if (!res.ok) return [];
     return await res.json() as SupabaseBook[];

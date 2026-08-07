@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
 
-export const revalidate = 0;
+export const revalidate = 3600;
 export const runtime = 'nodejs';
 
 interface Chapter {
@@ -51,13 +51,13 @@ async function getChapterData(bookId: string, chapterNum: string) {
     const [resBook, resChapter] = await Promise.all([
       fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,chapter_count`, {
         headers,
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       }),
       fetch(
         `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=id,book_id,chapter_number,title,content_html,content_url,content_path`,
         {
           headers,
-          cache: 'no-store',
+          next: { revalidate: 3600 },
         }
       ),
     ]);
