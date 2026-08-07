@@ -12,18 +12,19 @@ interface BookCardProps {
 
 export default function BookCard({ id, title, author, chapterCount, status, coverUrl }: BookCardProps) {
   return (
-    <Link href={`/books/${id}`} className="group flex flex-col gap-2.5">
+    <Link href={`/books/${id}`} className="group flex flex-col gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#B99654]/50">
       {/* Cover */}
-      <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md border border-[#DDD5C8] bg-[#EFE9DC] shadow-sm">
+      <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md border border-[#D8CDBB] bg-[#EFE9DC] shadow-[0_4px_14px_rgba(66,52,35,0.08)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#B99654]/70 group-hover:shadow-[0_10px_24px_rgba(66,52,35,0.14)]">
         <img
           src={coverUrl}
           alt={title}
-          className="object-cover w-full h-full"
+          className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-[1.025]"
         />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent opacity-80" />
 
         {/* Status Tag (Top-Left) */}
         <div className="absolute top-2 left-2">
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded shadow-sm ${
             status === 'Hoàn thành'
               ? 'bg-[#E6F4EA] text-[#137333]'
               : 'bg-[#FFF3E0] text-[#E65100]'
@@ -33,12 +34,12 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
         </div>
       </div>
 
-      <div className="mt-1 flex flex-col">
-        <h3 className="font-semibold text-[13px] md:text-sm text-[#2C2825] line-clamp-2 leading-tight group-hover:text-[#7A5B1E] transition-colors">
+      <div className="mt-1 flex flex-col min-h-[52px]">
+        <h3 className="font-semibold text-[13px] md:text-sm text-[#2C2825] line-clamp-2 leading-snug group-hover:text-[#7A5B1E] transition-colors">
           {title}
         </h3>
         
-        <div className="flex items-center text-[11px] md:text-xs text-[#7A7365] mt-1.5 font-medium truncate">
+        <div className="flex items-center text-[11px] md:text-xs text-[#7A7365] mt-1.5 font-medium truncate leading-none">
           <span className="truncate">{author}</span>
           <span className="mx-1.5 opacity-50">•</span>
           <span className="shrink-0">{chapterCount} chương</span>

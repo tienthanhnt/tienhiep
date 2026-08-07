@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ChapterList from '@/components/ChapterList';
 
 export const revalidate = 0;
 
@@ -70,15 +71,15 @@ export default async function BookDetailPage({ params }: { params: { id: string 
       </Link>
 
       {/* Book Info Header */}
-      <div className="p-5 md:p-6 rounded-lg flex flex-col md:flex-row gap-7 border border-[#DDD5C8] bg-[#FBFAF7]">
+      <div className="p-5 md:p-6 rounded-lg flex flex-col md:flex-row gap-7 border border-[#DDD5C8] bg-[#FBFAF7]/90 shadow-[0_8px_26px_rgba(66,52,35,0.07)]">
         <img
           src={book.cover_url || "https://images.unsplash.com/photo-1541963463532-d68292c34b19"}
           alt={book.title}
-          className="w-44 h-64 object-cover rounded-md border border-[#DDD5C8] self-center md:self-start shrink-0"
+          className="w-44 h-64 object-cover rounded-md border border-[#D8CDBB] self-center md:self-start shrink-0 shadow-[0_10px_22px_rgba(66,52,35,0.13)]"
         />
         <div className="flex flex-col justify-between flex-1 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#2C2825] mb-3 leading-snug">{book.title}</h1>
+            <h1 className="font-serif-reading text-2xl md:text-3xl font-bold text-[#2C2825] mb-3 leading-snug">{book.title}</h1>
             <p className="text-[#6B6357] text-sm mb-4">Tác giả: <span className="font-semibold text-[#2C2825]">{book.author || "Chưa rõ"}</span></p>
             
             <div className="flex flex-wrap gap-2.5 text-xs font-semibold">
@@ -94,7 +95,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
           {chapters.length > 0 && (
             <Link
               href={`/books/${book.id}/chapters/${chapters[0].chapter_number}`}
-              className="inline-flex items-center justify-center bg-[#2C2825] hover:bg-[#4A443A] text-white font-semibold px-6 py-2.5 rounded-md transition-colors w-fit"
+              className="inline-flex items-center justify-center bg-[#2C2825] hover:bg-[#4A443A] text-white font-semibold px-6 py-2.5 rounded-md transition-all w-fit shadow-sm hover:shadow-md"
             >
               Đọc từ chương 1
             </Link>
@@ -102,31 +103,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      {/* Chapters Table */}
-      <div className="p-5 md:p-6 rounded-lg border border-[#DDD5C8] bg-[#FBFAF7]">
-        <h2 className="text-lg font-bold text-[#2C2825] mb-5 border-b border-[#DDD5C8] pb-3">
-          Danh sách chương ({chapters.length})
-        </h2>
-
-        {chapters.length === 0 ? (
-          <p className="text-[#8C8373] py-6 text-center text-sm">Chưa có chương nào được upload.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {chapters.map((ch) => (
-              <Link
-                key={ch.id}
-                href={`/books/${book.id}/chapters/${ch.chapter_number}`}
-                className="p-3 rounded-md bg-white hover:bg-[#F4EFE6] text-[#2C2825] hover:text-[#7A5B1E] text-sm font-medium transition-colors flex justify-between items-center border border-[#E8E0D2]"
-              >
-                <span className="truncate">{ch.title}</span>
-                <span className="text-xs text-[#8C8373] shrink-0 ml-3">
-                  Chương {ch.chapter_number}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      <ChapterList bookId={book.id} chapters={chapters} />
     </div>
   );
 }

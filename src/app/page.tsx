@@ -1,4 +1,5 @@
 import BookCard from "@/components/BookCard";
+import RecentReading from "@/components/RecentReading";
 
 export const revalidate = 0;
 
@@ -63,21 +64,26 @@ export default async function Home() {
     : MOCK_BOOKS;
 
   return (
-    <div className="flex flex-col gap-8">
-      <section className="text-center pt-3 pb-8 border-b border-[#DDD5C8]">
-        <div className="mx-auto mb-4 h-px w-28 bg-[#D8CDBB]" />
-        <h1 className="text-3xl md:text-5xl font-bold text-[#26211C] leading-tight tracking-wide">
+    <div className="flex flex-col gap-9">
+      <section className="text-center pt-2 pb-9 border-b border-[#DDD5C8]/80">
+        <div className="mx-auto mb-4 h-px w-32 soft-divider" />
+        <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#FBFAF7]/80 text-[#8A6A32] text-xl leading-none shadow-sm">
+          ☯
+        </div>
+        <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">
           Tàng Kinh Các
         </h1>
-        <p className="mt-3 text-sm md:text-base text-[#5E5448] font-serif-reading italic">
+        <p className="mt-3 text-sm md:text-base text-[#5E5448] font-serif-reading italic leading-relaxed">
           &ldquo;Độc vạn quyển thư, hành vạn lý lộ, phá vạn trùng quan.&rdquo;
         </p>
-        <div className="mx-auto mt-5 h-px w-20 bg-[#D8CDBB]" />
+        <div className="mx-auto mt-5 h-px w-24 soft-divider opacity-70" />
       </section>
 
+      <RecentReading />
+
       <section>
-        <div className="flex items-center gap-3 mb-5">
-          <h2 className="text-base font-bold text-[#26211C]">
+        <div className="flex items-center gap-3 mb-5 border-l-2 border-[#B99654] pl-3">
+          <h2 className="text-base font-bold text-[#26211C] tracking-wide">
             Danh sách truyện
           </h2>
           <span className="text-xs text-[#8C8373]">({books.length} bộ)</span>

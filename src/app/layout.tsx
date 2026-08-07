@@ -16,17 +16,17 @@ export default function RootLayout({
     <html lang="vi">
       <body className="min-h-screen flex flex-col antialiased">
 
-        <header className="sticky top-0 z-50 border-b border-[#DDD5C8] bg-[#FBFAF7]/95 backdrop-blur-sm">
+        <header className="sticky top-0 z-50 border-b border-[#DDD5C8]/80 bg-[#FBFAF7]/90 shadow-[0_1px_12px_rgba(66,52,35,0.04)] backdrop-blur-md">
           <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 shrink-0 text-[#29241E]">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#F4EFE6] text-[#8A6A32] text-lg leading-none">
+            <Link href="/" className="group flex items-center gap-2.5 shrink-0 text-[#29241E]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#F4EFE6] text-[#8A6A32] text-lg leading-none shadow-inner transition-colors group-hover:border-[#B99654]">
                 ☯
               </span>
-              <span className="font-bold text-base tracking-wide">Tàng Kinh Các</span>
+              <span className="font-bold text-base tracking-wide group-hover:text-[#7A5B1E] transition-colors">Tàng Kinh Các</span>
             </Link>
 
             <nav className="flex items-center gap-6 text-sm">
-              <Link href="/" className="text-[#665E53] hover:text-[#2C2825] transition-colors py-1 text-sm">
+              <Link href="/" className="text-[#665E53] hover:text-[#2C2825] transition-colors py-1 text-sm font-medium">
                 Trang Chủ
               </Link>
             </nav>
@@ -37,7 +37,7 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="border-t border-[#DDD5C8] py-6 mt-12 text-[#7A7365]">
+        <footer className="border-t border-[#DDD5C8]/80 py-6 mt-12 text-[#7A7365]">
           <div className="max-w-6xl mx-auto px-5 flex items-center justify-between gap-4 text-xs">
             <p>Tàng Kinh Các</p>
             <p>&copy; 2026</p>
