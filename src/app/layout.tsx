@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tàng Kinh Các",
+  title: "Tiên Hiệp Lâu",
   description: "Thư viện truyện tiếng Việt gọn nhẹ, dễ đọc trên mọi thiết bị.",
 };
 
@@ -22,7 +22,7 @@ export default function RootLayout({
               <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#F4EFE6] text-[#8A6A32] text-lg leading-none shadow-inner transition-colors group-hover:border-[#B99654]">
                 ☯
               </span>
-              <span className="font-bold text-base tracking-wide group-hover:text-[#7A5B1E] transition-colors">Tàng Kinh Các</span>
+              <span className="font-bold text-base tracking-wide group-hover:text-[#7A5B1E] transition-colors">Tiên Hiệp Lâu</span>
             </Link>
 
             <nav className="flex items-center gap-6 text-sm">
@@ -39,7 +39,7 @@ export default function RootLayout({
 
         <footer className="border-t border-[#DDD5C8]/80 py-6 mt-12 text-[#7A7365]">
           <div className="max-w-6xl mx-auto px-5 flex items-center justify-between gap-4 text-xs">
-            <p>Tàng Kinh Các</p>
+            <p>Tiên Hiệp Lâu</p>
             <p>&copy; 2026</p>
           </div>
         </footer>

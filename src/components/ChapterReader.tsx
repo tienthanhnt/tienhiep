@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -12,6 +12,13 @@ interface ChapterReaderProps {
   contentHtml: string;
   prevNum: number | null;
   nextNum: number | null;
+  chapters: ChapterNavItem[];
+}
+
+interface ChapterNavItem {
+  id: number;
+  chapter_number: number;
+  title: string;
 }
 
 const RECENT_READING_KEY = 'tang-kinh-cac:recent-reading';
@@ -24,6 +31,7 @@ export default function ChapterReader({
   contentHtml,
   prevNum,
   nextNum,
+  chapters,
 }: ChapterReaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -31,9 +39,19 @@ export default function ChapterReader({
   const [theme, setTheme] = useState<'parchment' | 'dark' | 'white'>('parchment');
   const [loadingChapter, setLoadingChapter] = useState<number | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [showToc, setShowToc] = useState(false);
+  const [tocQuery, setTocQuery] = useState('');
 
   const prevHref = prevNum ? `/books/${bookId}/chapters/${prevNum}` : null;
   const nextHref = nextNum ? `/books/${bookId}/chapters/${nextNum}` : null;
+  const filteredChapters = useMemo(() => {
+    const keyword = tocQuery.trim().toLowerCase();
+    if (!keyword) return chapters;
+    return chapters.filter((chapter) => (
+      chapter.title.toLowerCase().includes(keyword) ||
+      String(chapter.chapter_number).includes(keyword)
+    ));
+  }, [chapters, tocQuery]);
 
   useEffect(() => {
     if (prevHref) router.prefetch(prevHref);
@@ -42,6 +60,7 @@ export default function ChapterReader({
 
   useEffect(() => {
     setLoadingChapter(null);
+    setShowToc(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -127,6 +146,17 @@ export default function ChapterReader({
       </Link>
     );
   };
+
+  const renderTocButton = () => (
+    <button
+      type="button"
+      onClick={() => setShowToc((current) => !current)}
+      className="text-[#A37B34] transition-colors hover:text-[#7A5B1E] hover:underline"
+      aria-expanded={showToc}
+    >
+      Mục Lục
+    </button>
+  );
 
   const scrollToPageEdge = (position: 'top' | 'bottom') => {
     window.scrollTo({
@@ -235,12 +265,59 @@ export default function ChapterReader({
       <div className="flex justify-between items-center text-xs font-semibold">
         {renderChapterLink(prevHref, prevNum, '← Chương Trước', '← Chương Trước')}
 
-        <Link href={`/books/${bookId}`} className="text-[#A37B34] hover:underline">
-          Mục Lục
-        </Link>
+        {renderTocButton()}
 
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
+
+      {showToc && (
+        <div className="rounded-lg border border-[#D8CDBB] bg-[#FBFAF7]/95 p-4 shadow-[0_10px_28px_rgba(66,52,35,0.08)]">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-[#2C2825]">Mục lục chương</h2>
+              <p className="mt-1 text-xs text-[#8C8373]">{chapters.length} chương</p>
+            </div>
+            <input
+              value={tocQuery}
+              onChange={(event) => setTocQuery(event.target.value)}
+              placeholder="Tìm chương"
+              className="w-full rounded-md border border-[#DDD5C8] bg-white/90 px-3 py-2 text-sm text-[#2C2825] outline-none transition-colors placeholder:text-[#9A9182] focus:border-[#B99654] sm:w-56"
+            />
+          </div>
+
+          <div className="max-h-80 overflow-y-auto pr-1">
+            {filteredChapters.length === 0 ? (
+              <p className="py-8 text-center text-sm text-[#8C8373]">
+                Không tìm thấy chương phù hợp.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {filteredChapters.map((chapter) => {
+                  const isCurrent = chapter.chapter_number === chapterNumber;
+                  return (
+                    <Link
+                      key={chapter.id}
+                      href={`/books/${bookId}/chapters/${chapter.chapter_number}`}
+                      prefetch={false}
+                      onClick={() => setLoadingChapter(chapter.chapter_number)}
+                      className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
+                        isCurrent
+                          ? 'border-[#B99654] bg-[#F3EBDD] text-[#7A5B1E]'
+                          : 'border-[#E8E0D2] bg-white/82 text-[#2C2825] hover:border-[#D0BC90] hover:bg-[#F4EFE6] hover:text-[#7A5B1E]'
+                      }`}
+                    >
+                      <span className="truncate">{chapter.title}</span>
+                      <span className="shrink-0 text-xs text-[#8C8373]">
+                        {chapter.chapter_number}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Chapter Title & Reading Content */}
       <div className={`p-6 md:p-12 rounded-lg border transition-all duration-300 ${getThemeClass()}`}>
@@ -259,9 +336,7 @@ export default function ChapterReader({
       <div className="flex justify-between items-center text-xs font-semibold mt-4">
         {renderChapterLink(prevHref, prevNum, '← Chương Trước', '← Chương Trước')}
 
-        <Link href={`/books/${bookId}`} className="text-[#A37B34] hover:underline">
-          Mục Lục
-        </Link>
+        {renderTocButton()}
 
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>

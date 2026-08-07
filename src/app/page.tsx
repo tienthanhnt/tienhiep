@@ -71,7 +71,7 @@ export default async function Home() {
           ☯
         </div>
         <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">
-          Tàng Kinh Các
+          Tiên Hiệp Lâu
         </h1>
         <p className="mt-3 text-sm md:text-base text-[#5E5448] font-serif-reading italic leading-relaxed">
           &ldquo;Độc vạn quyển thư, hành vạn lý lộ, phá vạn trùng quan.&rdquo;
