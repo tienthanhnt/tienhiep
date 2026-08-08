@@ -67,7 +67,7 @@ export default async function Home() {
     <div className="flex flex-col gap-9">
       <section className="text-center pt-2 pb-9 border-b border-[#DDD5C8]/80">
         <div className="mx-auto mb-4 h-px w-32 soft-divider" />
-        <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#FBFAF7]/80 text-[#8A6A32] text-xl leading-none shadow-sm">
+        <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#2C2825]/25 bg-white/55 text-[#111111] text-xl leading-none shadow-sm">
           ☯
         </div>
         <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">

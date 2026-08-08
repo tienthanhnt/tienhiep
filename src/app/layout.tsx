@@ -19,7 +19,7 @@ export default function RootLayout({
         <header className="sticky top-0 z-50 border-b border-[#DDD5C8]/80 bg-[#FBFAF7]/90 shadow-[0_1px_12px_rgba(66,52,35,0.04)] backdrop-blur-md">
           <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
             <Link href="/" className="group flex items-center gap-2.5 shrink-0 text-[#29241E]">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8CDBB] bg-[#F4EFE6] text-[#8A6A32] text-lg leading-none shadow-inner transition-colors group-hover:border-[#B99654]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2C2825]/25 bg-white/65 text-[#111111] text-lg leading-none shadow-inner transition-colors group-hover:border-[#111111]/55 group-hover:bg-white/90">
                 ☯
               </span>
               <span className="font-bold text-base tracking-wide group-hover:text-[#7A5B1E] transition-colors">Tiên Hiệp Lâu</span>
