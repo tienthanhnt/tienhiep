@@ -1,7 +1,7 @@
 import BookCard from "@/components/BookCard";
 import RecentReading from "@/components/RecentReading";
 
-export const revalidate = 300;
+export const revalidate = 600;
 
 const MOCK_BOOKS = [
   {
@@ -41,7 +41,7 @@ async function getBooks() {
   try {
     const res = await fetch(`${url}/rest/v1/books?select=*&order=created_at.desc`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
-      next: { revalidate: 300 },
+      next: { revalidate: 600 },
     });
     if (!res.ok) return [];
     return await res.json() as SupabaseBook[];
@@ -67,9 +67,6 @@ export default async function Home() {
     <div className="flex flex-col gap-9">
       <section className="text-center pt-2 pb-9 border-b border-[#DDD5C8]/80">
         <div className="mx-auto mb-4 h-px w-32 soft-divider" />
-        <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#2C2825]/25 bg-white/55 text-[#111111] text-xl leading-none shadow-sm">
-          ☯
-        </div>
         <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">
           Tiên Hiệp Lâu
         </h1>

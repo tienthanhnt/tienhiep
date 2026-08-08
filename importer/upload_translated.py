@@ -107,39 +107,11 @@ def validate_content_storage_setup():
         raise e
 
 
-def get_or_create_book(title, author, cover_url=DEFAULT_COVER):
-    # Kiểm tra xem truyện đã có trên DB chưa
-    res = supabase.table("books").select("id").eq("title", title).execute()
-    if len(res.data) > 0:
-        book_id = res.data[0]['id']
-        print(f"🔍 Đã tìm thấy truyện '{title}' trên Database (ID: {book_id})")
-        # Cập nhật cover_url nếu đã có ảnh mới
-        if cover_url != DEFAULT_COVER:
-            supabase.table("books").update({"cover_url": cover_url}).eq("id", book_id).execute()
-            print(f"🖼️  Đã cập nhật ảnh bìa mới cho truyện ID={book_id}")
-        return book_id
-
-    print(f"🚀 Chưa có truyện '{title}'. Đang tạo mới...")
-    book_data = {
-        "title": title,
-        "author": author,
-        "status": "Đang ra",
-        "rating": 8.0,
-        "chapter_count": 0,
-        "cover_url": cover_url
-    }
-    res = supabase.table("books").insert(book_data).execute()
-    book_id = res.data[0]['id']
-    print(f"✅ Đã tạo truyện mới với ID = {book_id}")
-    return book_id
-
-def upload_chapters(translated_dir):
-    print(f"📖 Đang đọc các chương từ: {translated_dir}")
-    validate_content_storage_setup()
-
-    # Lấy thông tin truyện từ book_info.txt trong thư mục Translated
+def read_book_info(translated_dir: str) -> tuple[str, str, str]:
+    """Đọc title, author, status từ book_info.txt."""
     book_title = "Chưa đặt tên"
     book_author = "Chưa rõ"
+    book_status = "Đang ra"
     info_path = os.path.join(translated_dir, "book_info.txt")
 
     if os.path.exists(info_path):
@@ -149,14 +121,59 @@ def upload_chapters(translated_dir):
                     book_title = line.split("=", 1)[1].strip()
                 elif line.startswith("author="):
                     book_author = line.split("=", 1)[1].strip()
+                elif line.startswith("status="):
+                    book_status = line.split("=", 1)[1].strip() or book_status
     else:
         print("⚠️  Không tìm thấy book_info.txt — dùng tiêu đề mặc định.")
 
+    return book_title, book_author, book_status
+
+
+def get_or_create_book(title, author, status, cover_url=DEFAULT_COVER):
+    # Kiểm tra xem truyện đã có trên DB chưa
+    res = supabase.table("books").select("id").eq("title", title).execute()
+    if len(res.data) > 0:
+        book_id = res.data[0]['id']
+        print(f"🔍 Đã tìm thấy truyện '{title}' trên Database (ID: {book_id})")
+        update_data = {"status": status}
+        if cover_url != DEFAULT_COVER:
+            update_data["cover_url"] = cover_url
+        supabase.table("books").update(update_data).eq("id", book_id).execute()
+        print(f"ℹ️  Đã cập nhật trạng thái: {status}")
+        if cover_url != DEFAULT_COVER:
+            print(f"🖼️  Đã cập nhật ảnh bìa mới cho truyện ID={book_id}")
+        return book_id
+
+    print(f"🚀 Chưa có truyện '{title}'. Đang tạo mới...")
+    book_data = {
+        "title": title,
+        "author": author,
+        "status": status,
+        "rating": 8.0,
+        "chapter_count": 0,
+        "cover_url": cover_url
+    }
+    res = supabase.table("books").insert(book_data).execute()
+    book_id = res.data[0]['id']
+    print(f"✅ Đã tạo truyện mới với ID = {book_id}")
+    return book_id
+
+def upload_chapters(translated_dir, limit: int | None = None):
+    print(f"📖 Đang đọc các chương từ: {translated_dir}")
+    validate_content_storage_setup()
+
+    # Lấy thông tin truyện từ book_info.txt trong thư mục Translated
+    book_title, book_author, book_status = read_book_info(translated_dir)
+
     cover_url = upload_cover_image(translated_dir, book_title)
-    book_id = get_or_create_book(book_title, book_author, cover_url)
+    book_id = get_or_create_book(book_title, book_author, book_status, cover_url)
     
     # Đọc danh sách các chương đã dịch
     files = sorted([f for f in os.listdir(translated_dir) if f.endswith(".md")])
+    if limit is not None:
+        files = files[:limit]
+        print(f"🧪 Chế độ upload thử: chỉ xử lý {len(files)} chương đầu.")
+
     if not files:
         print("⚠️ Không tìm thấy file .md nào trong thư mục dịch.")
         return
@@ -241,11 +258,17 @@ if __name__ == "__main__":
         help='Thư mục cha để tự động tìm tất cả thư mục *_Translated bên trong.\n'
              'Mặc định: chapters/  (bỏ qua nếu đã truyền --translated-dir)'
     )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        default=None,
+        help='Chỉ upload N file .md đầu tiên trong mỗi thư mục. Dùng để test trước khi upload toàn bộ.'
+    )
     args = parser.parse_args()
 
     if args.translated_dir:
         # Upload 1 truyện cụ thể
-        upload_chapters(args.translated_dir)
+        upload_chapters(args.translated_dir, limit=args.limit)
     else:
         # Tự động quét và upload tất cả thư mục *_Translated
         scan_root = args.scan_dir
@@ -270,7 +293,7 @@ if __name__ == "__main__":
 
         for d in translated_dirs:
             print(f"\n{'='*60}")
-            upload_chapters(d)
+            upload_chapters(d, limit=args.limit)
 
         print(f"\n{'='*60}")
         print(f"🏆 Đã xử lý xong tất cả {len(translated_dirs)} bộ truyện!")

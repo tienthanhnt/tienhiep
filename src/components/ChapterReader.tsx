@@ -12,7 +12,7 @@ interface ChapterReaderProps {
   contentHtml: string;
   prevNum: number | null;
   nextNum: number | null;
-  chapters: ChapterNavItem[];
+  chapterCount: number;
 }
 
 interface ChapterNavItem {
@@ -22,6 +22,7 @@ interface ChapterNavItem {
 }
 
 const RECENT_READING_KEY = 'tang-kinh-cac:recent-reading';
+const TOC_PAGE_SIZE = 100;
 
 export default function ChapterReader({
   bookId,
@@ -31,7 +32,7 @@ export default function ChapterReader({
   contentHtml,
   prevNum,
   nextNum,
-  chapters,
+  chapterCount,
 }: ChapterReaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,17 +42,37 @@ export default function ChapterReader({
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showToc, setShowToc] = useState(false);
   const [tocQuery, setTocQuery] = useState('');
+  const [tocPage, setTocPage] = useState(() => Math.max(0, Math.floor((chapterNumber - 1) / TOC_PAGE_SIZE)));
+  const [tocCache, setTocCache] = useState<Record<number, ChapterNavItem[]>>({});
+  const [tocLoading, setTocLoading] = useState(false);
+  const [tocError, setTocError] = useState('');
+  const [tocSearchResults, setTocSearchResults] = useState<ChapterNavItem[] | null>(null);
+  const [tocSearchLoading, setTocSearchLoading] = useState(false);
 
   const prevHref = prevNum ? `/books/${bookId}/chapters/${prevNum}` : null;
   const nextHref = nextNum ? `/books/${bookId}/chapters/${nextNum}` : null;
+  const totalTocPages = Math.max(1, Math.ceil((chapterCount || chapterNumber) / TOC_PAGE_SIZE));
+  const currentTocChapters = useMemo(() => tocCache[tocPage] || [], [tocCache, tocPage]);
+  const tocRanges = useMemo(() => {
+    return Array.from({ length: totalTocPages }, (_, index) => {
+      const first = index * TOC_PAGE_SIZE + 1;
+      const last = Math.min((index + 1) * TOC_PAGE_SIZE, chapterCount || first + TOC_PAGE_SIZE - 1);
+      return {
+        index,
+        label: `Chương ${first}-${last}`,
+      };
+    });
+  }, [chapterCount, totalTocPages]);
+
   const filteredChapters = useMemo(() => {
     const keyword = tocQuery.trim().toLowerCase();
-    if (!keyword) return chapters;
-    return chapters.filter((chapter) => (
+    if (!keyword) return currentTocChapters;
+    if (tocSearchResults) return tocSearchResults;
+    return currentTocChapters.filter((chapter) => (
       chapter.title.toLowerCase().includes(keyword) ||
       String(chapter.chapter_number).includes(keyword)
     ));
-  }, [chapters, tocQuery]);
+  }, [currentTocChapters, tocQuery, tocSearchResults]);
 
   useEffect(() => {
     if (prevHref) router.prefetch(prevHref);
@@ -61,7 +82,129 @@ export default function ChapterReader({
   useEffect(() => {
     setLoadingChapter(null);
     setShowToc(false);
-  }, [pathname]);
+    setTocQuery('');
+    setTocSearchResults(null);
+    setTocPage(Math.max(0, Math.floor((chapterNumber - 1) / TOC_PAGE_SIZE)));
+  }, [chapterNumber, pathname]);
+
+  useEffect(() => {
+    if (!showToc || tocCache[tocPage]) return;
+
+    const controller = new AbortController();
+    const loadTocPage = async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!url || !key) {
+        setTocError('Thiếu cấu hình Supabase.');
+        return;
+      }
+
+      setTocLoading(true);
+      setTocError('');
+
+      try {
+        const from = tocPage * TOC_PAGE_SIZE;
+        const to = from + TOC_PAGE_SIZE - 1;
+        const response = await fetch(
+          `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&order=chapter_number.asc`,
+          {
+            headers: {
+              apikey: key,
+              Authorization: `Bearer ${key}`,
+              Range: `${from}-${to}`,
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (!response.ok) throw new Error('Không tải được mục lục.');
+        const data = await response.json() as ChapterNavItem[];
+        setTocCache((current) => ({ ...current, [tocPage]: data }));
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setTocError(error instanceof Error ? error.message : 'Không tải được mục lục.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setTocLoading(false);
+        }
+      }
+    };
+
+    loadTocPage();
+    return () => controller.abort();
+  }, [bookId, showToc, tocCache, tocPage]);
+
+  useEffect(() => {
+    const keyword = tocQuery.trim();
+    if (!showToc || keyword.length < 2) {
+      setTocSearchResults(null);
+      setTocSearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!url || !key) return;
+
+      setTocSearchLoading(true);
+      try {
+        const escapedKeyword = keyword.replace(/[%*_]/g, '');
+        const chapterNumber = Number(escapedKeyword);
+        const filters = [`title.ilike.*${encodeURIComponent(escapedKeyword)}*`];
+        if (Number.isInteger(chapterNumber)) {
+          filters.push(`chapter_number.eq.${chapterNumber}`);
+        }
+
+        const response = await fetch(
+          `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&or=(${filters.join(',')})&order=chapter_number.asc&limit=100`,
+          {
+            headers: {
+              apikey: key,
+              Authorization: `Bearer ${key}`,
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (!response.ok) throw new Error();
+        const data = await response.json() as ChapterNavItem[];
+        setTocSearchResults(data);
+      } catch {
+        if (!controller.signal.aborted) {
+          setTocSearchResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setTocSearchLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [bookId, showToc, tocQuery]);
+
+  useEffect(() => {
+    window.history.scrollRestoration = 'manual';
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    setScrollProgress(0);
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      setScrollProgress(0);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [chapterNumber]);
 
   useEffect(() => {
     try {
@@ -275,7 +418,7 @@ export default function ChapterReader({
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-bold text-[#2C2825]">Mục lục chương</h2>
-              <p className="mt-1 text-xs text-[#8C8373]">{chapters.length} chương</p>
+              <p className="mt-1 text-xs text-[#8C8373]">{chapterCount || 'Nhiều'} chương</p>
             </div>
             <input
               value={tocQuery}
@@ -285,12 +428,63 @@ export default function ChapterReader({
             />
           </div>
 
+          {tocQuery.trim().length === 0 && totalTocPages > 1 && (
+            <div className="mb-3 flex flex-col gap-2 rounded-md border border-[#E8E0D2] bg-white/60 p-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-xs font-semibold text-[#6B6357]">
+                {tocRanges[tocPage]?.label}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTocPage((current) => Math.max(0, current - 1))}
+                  disabled={tocPage === 0}
+                  className="rounded-md border border-[#D0BC90] px-3 py-1.5 text-xs font-semibold text-[#5C5449] transition-colors hover:bg-[#F3EBDD] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Trước
+                </button>
+                <select
+                  value={tocPage}
+                  onChange={(event) => setTocPage(Number(event.target.value))}
+                  className="max-w-full rounded-md border border-[#D0BC90] bg-[#FBFAF7] px-3 py-1.5 text-xs font-semibold text-[#5C5449] outline-none focus:border-[#B99654]"
+                >
+                  {tocRanges.map((range) => (
+                    <option key={range.index} value={range.index}>
+                      {range.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setTocPage((current) => Math.min(totalTocPages - 1, current + 1))}
+                  disabled={tocPage >= totalTocPages - 1}
+                  className="rounded-md border border-[#D0BC90] px-3 py-1.5 text-xs font-semibold text-[#5C5449] transition-colors hover:bg-[#F3EBDD] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="max-h-80 overflow-y-auto pr-1">
-            {filteredChapters.length === 0 ? (
+            {(tocLoading || tocSearchLoading) ? (
+              <p className="py-8 text-center text-sm text-[#8C8373]">
+                Đang tải mục lục...
+              </p>
+            ) : tocError ? (
+              <p className="py-8 text-center text-sm text-[#A04A3A]">
+                {tocError}
+              </p>
+            ) : filteredChapters.length === 0 ? (
               <p className="py-8 text-center text-sm text-[#8C8373]">
                 Không tìm thấy chương phù hợp.
               </p>
             ) : (
+              <>
+              {tocQuery.trim().length > 0 && (
+                <p className="mb-3 text-xs font-medium text-[#8C8373]">
+                  Tìm thấy {filteredChapters.length} chương phù hợp.
+                </p>
+              )}
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 {filteredChapters.map((chapter) => {
                   const isCurrent = chapter.chapter_number === chapterNumber;
@@ -314,6 +508,7 @@ export default function ChapterReader({
                   );
                 })}
               </div>
+              </>
             )}
           </div>
         </div>

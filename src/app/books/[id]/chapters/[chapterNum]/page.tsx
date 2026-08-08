@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
 
-export const revalidate = 3600;
+export const revalidate = 900;
 export const runtime = 'nodejs';
 
 interface Chapter {
@@ -13,12 +13,6 @@ interface Chapter {
   content_html?: string | null;
   content_url?: string | null;
   content_path?: string | null;
-}
-
-interface ChapterNavItem {
-  id: number;
-  chapter_number: number;
-  title: string;
 }
 
 interface Book {
@@ -54,23 +48,16 @@ async function getChapterData(bookId: string, chapterNum: string) {
 
   try {
     const headers = { apikey: key, Authorization: `Bearer ${key}` };
-    const [resBook, resChapter, resChapters] = await Promise.all([
+    const [resBook, resChapter] = await Promise.all([
       fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,chapter_count`, {
         headers,
-        next: { revalidate: 3600 },
+        next: { revalidate: 900 },
       }),
       fetch(
         `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=id,book_id,chapter_number,title,content_html,content_url,content_path`,
         {
           headers,
-          next: { revalidate: 3600 },
-        }
-      ),
-      fetch(
-        `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&order=chapter_number.asc`,
-        {
-          headers,
-          next: { revalidate: 3600 },
+          next: { revalidate: 900 },
         }
       ),
     ]);
@@ -83,7 +70,6 @@ async function getChapterData(bookId: string, chapterNum: string) {
     const chapters = await resChapter.json();
     if (!chapters || chapters.length === 0) return null;
 
-    const chapterList = resChapters.ok ? await resChapters.json() as ChapterNavItem[] : [];
     const chapter = chapters[0] as Chapter;
     let contentHtml = chapter.content_html || "";
 
@@ -96,7 +82,6 @@ async function getChapterData(bookId: string, chapterNum: string) {
     return {
       book: books[0] as Book,
       chapter,
-      chapterList,
       contentHtml,
     };
   } catch (err) {
@@ -116,7 +101,7 @@ export default async function ChapterPage({
     notFound();
   }
 
-  const { book, chapter, chapterList, contentHtml } = data;
+  const { book, chapter, contentHtml } = data;
   const currentNum = parseInt(params.chapterNum, 10);
 
   const prevNum = currentNum > 1 ? currentNum - 1 : null;
@@ -131,7 +116,7 @@ export default async function ChapterPage({
       contentHtml={contentHtml}
       prevNum={prevNum}
       nextNum={nextNum}
-      chapters={chapterList}
+      chapterCount={book.chapter_count || 0}
     />
   );
 }

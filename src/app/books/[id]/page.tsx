@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
 
-export const revalidate = 3600;
+export const revalidate = 900;
 
 interface Chapter {
   id: number;
@@ -27,26 +27,38 @@ async function getBookDetails(id: string) {
   if (!url || !key) return null;
 
   try {
+    const headers = { apikey: key, Authorization: `Bearer ${key}` };
     const resBook = await fetch(`${url}/rest/v1/books?id=eq.${id}`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-      next: { revalidate: 3600 },
+      headers,
+      next: { revalidate: 900 },
     });
     if (!resBook.ok) return null;
     const books = await resBook.json();
     if (!books || books.length === 0) return null;
 
-    const resChapters = await fetch(
-      `${url}/rest/v1/chapters?book_id=eq.${id}&select=id,chapter_number,title,created_at&order=chapter_number.asc`,
-      {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-        next: { revalidate: 3600 },
-      }
-    );
-    const chapters = resChapters.ok ? await resChapters.json() : [];
+    const chapters: Chapter[] = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const to = from + pageSize - 1;
+      const resChapters = await fetch(
+        `${url}/rest/v1/chapters?book_id=eq.${id}&select=id,chapter_number,title,created_at&order=chapter_number.asc`,
+        {
+          headers: {
+            ...headers,
+            Range: `${from}-${to}`,
+          },
+          next: { revalidate: 900 },
+        }
+      );
+      if (!resChapters.ok) break;
+      const batch = await resChapters.json() as Chapter[];
+      chapters.push(...batch);
+      if (batch.length < pageSize) break;
+    }
 
     return {
       book: books[0] as Book,
-      chapters: chapters as Chapter[],
+      chapters,
     };
   } catch (err) {
     console.error("Error fetching book details:", err);

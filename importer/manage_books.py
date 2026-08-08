@@ -76,8 +76,8 @@ def find_book_by_id(book_id: int):
 
 
 def read_book_info(translated_dir: str):
-    """Đọc title và author từ book_info.txt trong thư mục translated."""
-    title, author = "Chưa đặt tên", "Chưa rõ"
+    """Đọc title, author, status từ book_info.txt trong thư mục translated."""
+    title, author, status = "Chưa đặt tên", "Chưa rõ", "Đang ra"
     info_path = os.path.join(translated_dir, "book_info.txt")
     if os.path.exists(info_path):
         with open(info_path, "r", encoding="utf-8") as f:
@@ -86,7 +86,9 @@ def read_book_info(translated_dir: str):
                     title = line.split("=", 1)[1].strip()
                 elif line.startswith("author="):
                     author = line.split("=", 1)[1].strip()
-    return title, author
+                elif line.startswith("status="):
+                    status = line.split("=", 1)[1].strip() or status
+    return title, author, status
 
 
 def upload_cover(translated_dir: str, book_title: str) -> str:
@@ -370,7 +372,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
         print(f"❌ Không tìm thấy thư mục: {translated_dir}")
         return
 
-    title, author = read_book_info(translated_dir)
+    title, author, status = read_book_info(translated_dir)
     book = find_book_by_title(title)
 
     print(f"\n🔄 RESYNC: {title}")
@@ -384,7 +386,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
         # Xóa tất cả chương cũ
         delete_book_content_files(book["id"])
         supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
-        supabase.table("books").update({"chapter_count": 0}).eq("id", book["id"]).execute()
+        supabase.table("books").update({"chapter_count": 0, "status": status}).eq("id", book["id"]).execute()
         print(f"🗑️  Đã xóa chương cũ của '{title}'")
         book_id = book["id"]
     else:
@@ -392,7 +394,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
         cover_url = upload_cover(translated_dir, title)
         res = supabase.table("books").insert({
             "title": title, "author": author,
-            "status": "Đang ra", "rating": 8.0,
+            "status": status, "rating": 8.0,
             "chapter_count": 0, "cover_url": cover_url
         }).execute()
         book_id = res.data[0]["id"]
@@ -400,7 +402,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
 
     # Upload lại
     cover_url = upload_cover(translated_dir, title)
-    supabase.table("books").update({"cover_url": cover_url}).eq("id", book_id).execute()
+    supabase.table("books").update({"cover_url": cover_url, "status": status}).eq("id", book_id).execute()
 
     total = upload_all_chapters(book_id, translated_dir)
     print(f"🎉 Resync hoàn tất: {total} chương đã được upload lại.")
