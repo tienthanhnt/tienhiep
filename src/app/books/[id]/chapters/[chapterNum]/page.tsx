@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
 
-export const revalidate = 3600;
+export const revalidate = 900;
 export const runtime = 'nodejs';
 
 interface Chapter {
@@ -54,23 +54,16 @@ async function getChapterData(bookId: string, chapterNum: string) {
 
   try {
     const headers = { apikey: key, Authorization: `Bearer ${key}` };
-    const [resBook, resChapter, resChapters] = await Promise.all([
+    const [resBook, resChapter] = await Promise.all([
       fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,chapter_count`, {
         headers,
-        next: { revalidate: 3600 },
+        next: { revalidate: 900 },
       }),
       fetch(
         `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=id,book_id,chapter_number,title,content_html,content_url,content_path`,
         {
           headers,
-          next: { revalidate: 3600 },
-        }
-      ),
-      fetch(
-        `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&order=chapter_number.asc`,
-        {
-          headers,
-          next: { revalidate: 3600 },
+          next: { revalidate: 900 },
         }
       ),
     ]);
@@ -83,7 +76,26 @@ async function getChapterData(bookId: string, chapterNum: string) {
     const chapters = await resChapter.json();
     if (!chapters || chapters.length === 0) return null;
 
-    const chapterList = resChapters.ok ? await resChapters.json() as ChapterNavItem[] : [];
+    const chapterList: ChapterNavItem[] = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const to = from + pageSize - 1;
+      const resChapters = await fetch(
+        `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&order=chapter_number.asc`,
+        {
+          headers: {
+            ...headers,
+            Range: `${from}-${to}`,
+          },
+          next: { revalidate: 900 },
+        }
+      );
+      if (!resChapters.ok) break;
+      const batch = await resChapters.json() as ChapterNavItem[];
+      chapterList.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+
     const chapter = chapters[0] as Chapter;
     let contentHtml = chapter.content_html || "";
 

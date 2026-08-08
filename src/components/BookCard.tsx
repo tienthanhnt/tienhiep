@@ -21,20 +21,9 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
           className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-[1.025]"
         />
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent opacity-80" />
-
-        {/* Status Tag (Top-Left) */}
-        <div className="absolute top-2 left-2">
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded shadow-sm ${
-            status === 'Hoàn thành'
-              ? 'bg-[#E6F4EA] text-[#137333]'
-              : 'bg-[#FFF3E0] text-[#E65100]'
-          }`}>
-            {status === 'Hoàn thành' ? 'HOÀN' : 'ĐANG RA'}
-          </span>
-        </div>
       </div>
 
-      <div className="mt-1 flex flex-col min-h-[52px]">
+      <div className="mt-1 flex flex-col min-h-[70px]">
         <h3 className="font-semibold text-[13px] md:text-sm text-[#2C2825] line-clamp-2 leading-snug group-hover:text-[#7A5B1E] transition-colors">
           {title}
         </h3>
@@ -43,6 +32,16 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
           <span className="truncate">{author}</span>
           <span className="mx-1.5 opacity-50">•</span>
           <span className="shrink-0">{chapterCount} chương</span>
+        </div>
+
+        <div className="mt-2">
+          <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-bold leading-none ${
+            status === 'Hoàn thành'
+              ? 'border-[#B7DEC2] bg-[#E6F4EA] text-[#137333]'
+              : 'border-[#F1D0A8] bg-[#FFF3E0] text-[#B85300]'
+          }`}>
+            {status}
+          </span>
         </div>
       </div>
     </Link>
