@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
+import { buildBookDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const revalidate = 900;
 
@@ -64,6 +66,65 @@ async function getBookDetails(id: string) {
     console.error("Error fetching book details:", err);
     return null;
   }
+}
+
+async function getBookSeoData(id: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) return null;
+
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/books?id=eq.${id}&select=id,title,author,cover_url,status,chapter_count`,
+      {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        next: { revalidate: 900 },
+      }
+    );
+    if (!res.ok) return null;
+    const books = await res.json() as Book[];
+    return books[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const book = await getBookSeoData(params.id);
+  if (!book) {
+    return {
+      title: "Không tìm thấy truyện",
+    };
+  }
+
+  const siteUrl = getSiteUrl();
+  const path = `/books/${book.id}`;
+  const description = buildBookDescription(book);
+  const images = book.cover_url ? [{ url: book.cover_url, alt: book.title }] : undefined;
+
+  return {
+    title: `${book.title} - ${book.author || "Chưa rõ"}`,
+    description,
+    alternates: {
+      canonical: `${siteUrl}${path}`,
+    },
+    openGraph: {
+      type: "book",
+      siteName: SITE_NAME,
+      title: `${book.title} - ${book.author || "Chưa rõ"}`,
+      description,
+      url: `${siteUrl}${path}`,
+      images,
+      locale: "vi_VN",
+    },
+    twitter: {
+      card: book.cover_url ? "summary_large_image" : "summary",
+      title: `${book.title} - ${book.author || "Chưa rõ"}`,
+      description,
+      images: book.cover_url ? [book.cover_url] : undefined,
+    },
+  };
 }
 
 export default async function BookDetailPage({ params }: { params: { id: string } }) {

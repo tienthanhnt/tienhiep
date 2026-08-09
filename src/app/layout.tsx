@@ -1,10 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getSiteUrl, SITE_NAME } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tiên Hiệp Lâu",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
   description: "Thư viện truyện tiếng Việt gọn nhẹ, dễ đọc trên mọi thiết bị.",
+  applicationName: SITE_NAME,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: "Thư viện truyện tiếng Việt gọn nhẹ, dễ đọc trên mọi thiết bị.",
+    url: "/",
+    locale: "vi_VN",
+  },
 };
 
 export default function RootLayout({

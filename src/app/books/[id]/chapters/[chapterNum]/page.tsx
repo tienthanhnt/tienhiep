@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
+import { buildChapterDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const revalidate = 900;
 export const runtime = 'nodejs';
@@ -19,6 +21,7 @@ interface Book {
   id: number;
   title: string;
   chapter_count: number;
+  cover_url?: string | null;
 }
 
 async function fetchChapterContent(chapter: Chapter) {
@@ -88,6 +91,85 @@ async function getChapterData(bookId: string, chapterNum: string) {
     console.error("Error fetching chapter:", err);
     return null;
   }
+}
+
+async function getChapterSeoData(bookId: string, chapterNum: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) return null;
+
+  try {
+    const headers = { apikey: key, Authorization: `Bearer ${key}` };
+    const [resBook, resChapter] = await Promise.all([
+      fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,cover_url`, {
+        headers,
+        next: { revalidate: 900 },
+      }),
+      fetch(
+        `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=chapter_number,title`,
+        {
+          headers,
+          next: { revalidate: 900 },
+        }
+      ),
+    ]);
+
+    if (!resBook.ok || !resChapter.ok) return null;
+    const books = await resBook.json() as Book[];
+    const chapters = await resChapter.json() as Pick<Chapter, "chapter_number" | "title">[];
+    if (!books[0] || !chapters[0]) return null;
+
+    return {
+      book: books[0],
+      chapter: chapters[0],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string; chapterNum: string };
+}): Promise<Metadata> {
+  const data = await getChapterSeoData(params.id, params.chapterNum);
+  if (!data) {
+    return {
+      title: "Không tìm thấy chương",
+    };
+  }
+
+  const { book, chapter } = data;
+  const siteUrl = getSiteUrl();
+  const path = `/books/${book.id}/chapters/${chapter.chapter_number}`;
+  const title = `${book.title} - Chương ${chapter.chapter_number}: ${chapter.title}`;
+  const description = buildChapterDescription(book.title, chapter.title, chapter.chapter_number);
+  const images = book.cover_url ? [{ url: book.cover_url, alt: book.title }] : undefined;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `${siteUrl}${path}`,
+    },
+    openGraph: {
+      type: "article",
+      siteName: SITE_NAME,
+      title,
+      description,
+      url: `${siteUrl}${path}`,
+      images,
+      locale: "vi_VN",
+    },
+    twitter: {
+      card: book.cover_url ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: book.cover_url ? [book.cover_url] : undefined,
+    },
+  };
 }
 
 export default async function ChapterPage({
