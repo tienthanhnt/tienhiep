@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
-import { buildChapterDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
+import { buildChapterDescription, getCleanChapterTitle, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const revalidate = 900;
 export const runtime = 'nodejs';
@@ -144,7 +144,8 @@ export async function generateMetadata({
   const { book, chapter } = data;
   const siteUrl = getSiteUrl();
   const path = `/books/${book.id}/chapters/${chapter.chapter_number}`;
-  const title = `${book.title} - Chương ${chapter.chapter_number}: ${chapter.title}`;
+  const cleanChapterTitle = getCleanChapterTitle(chapter.title, chapter.chapter_number);
+  const title = `${book.title} - Chương ${chapter.chapter_number}: ${cleanChapterTitle}`;
   const description = buildChapterDescription(book.title, chapter.title, chapter.chapter_number);
   const images = book.cover_url ? [{ url: book.cover_url, alt: book.title }] : undefined;
 
