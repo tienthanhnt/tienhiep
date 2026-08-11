@@ -8,9 +8,20 @@ interface BookCardProps {
   chapterCount: number;
   status: 'Đang ra' | 'Hoàn thành';
   coverUrl: string;
+  genres?: string;
+  sourceType?: string;
 }
 
-export default function BookCard({ id, title, author, chapterCount, status, coverUrl }: BookCardProps) {
+function splitTags(value?: string) {
+  return (value || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+export default function BookCard({ id, title, author, chapterCount, status, coverUrl, genres, sourceType }: BookCardProps) {
+  const tags = [...(sourceType ? [sourceType] : []), ...splitTags(genres)].slice(0, 3);
+
   return (
     <Link href={`/books/${id}`} className="group flex flex-col gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#B99654]/50">
       {/* Cover */}
@@ -34,7 +45,7 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
           <span className="shrink-0">{chapterCount} chương</span>
         </div>
 
-        <div className="mt-2">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-bold leading-none ${
             status === 'Hoàn thành'
               ? 'border-[#B7DEC2] bg-[#E6F4EA] text-[#137333]'
@@ -42,6 +53,14 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
           }`}>
             {status}
           </span>
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex rounded border border-[#DDD5C8] bg-[#FBFAF7] px-2 py-0.5 text-[10px] font-semibold leading-none text-[#6B6357]"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
       </div>
     </Link>

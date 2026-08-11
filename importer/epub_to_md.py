@@ -25,6 +25,13 @@ def sanitize_filename(name: str) -> str:
     return name[:80]
 
 
+def translated_folder_name(title: str) -> str:
+    folder_name = sanitize_filename(title)
+    if folder_name.lower().endswith("_translated"):
+        return folder_name
+    return f"{folder_name}_Translated"
+
+
 def natural_sort_key(value: str):
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r'(\d+)', value)]
 
@@ -239,7 +246,7 @@ def convert_to_chapters(epub_path: str, output_dir: str):
     toc_chapter_titles = collect_toc_chapter_titles(book)
 
     # Tạo thư mục output riêng cho từng truyện
-    book_folder = os.path.join(output_dir, sanitize_filename(title))
+    book_folder = os.path.join(output_dir, translated_folder_name(title))
     os.makedirs(book_folder, exist_ok=True)
 
     # Lưu metadata truyện vào file riêng để importer dùng sau
@@ -332,8 +339,8 @@ def convert_to_chapters(epub_path: str, output_dir: str):
     print(f"   Tạo mới {created} file, bỏ qua {existing} file đã có.")
     print(f"   (Bỏ qua {skipped} trang phụ không phải nội dung)")
     print(f"\n📌 Bước tiếp theo:")
-    print(f"   1. Dịch Markdown trong thư mục '{book_folder}/' bằng translate_chapters.py")
-    print(f"   2. Chạy upload_translated.py để upload lên Supabase\n")
+    print(f"   1. Nếu cần biên tập/dịch thêm, chạy translate_chapters.py trên thư mục này.")
+    print(f"   2. Chạy upload_translated.py --translated-dir '{book_folder}' để upload lên Supabase\n")
 
 
 if __name__ == "__main__":

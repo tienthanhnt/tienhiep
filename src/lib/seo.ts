@@ -13,12 +13,21 @@ export function buildBookDescription(book: {
   author?: string | null;
   status?: string | null;
   chapter_count?: number | null;
+  description?: string | null;
+  genres?: string | null;
+  source_type?: string | null;
 }) {
+  if (book.description?.trim()) {
+    return book.description.trim();
+  }
+
   const author = book.author || "Chưa rõ";
   const status = book.status || "Đang ra";
   const chapterCount = book.chapter_count || 0;
+  const genres = book.genres ? ` Thể loại: ${book.genres}.` : "";
+  const sourceType = book.source_type ? ` Bản ${book.source_type.toLowerCase()}.` : "";
 
-  return `Đọc truyện ${book.title} của tác giả ${author} tại ${SITE_NAME}. Truyện ${status.toLowerCase()}, hiện có ${chapterCount} chương, giao diện đọc gọn nhẹ và dễ theo dõi.`;
+  return `Đọc truyện ${book.title} của tác giả ${author} tại ${SITE_NAME}. Truyện ${status.toLowerCase()}, hiện có ${chapterCount} chương.${genres}${sourceType} Giao diện đọc gọn nhẹ và dễ theo dõi.`;
 }
 
 export function getCleanChapterTitle(chapterTitle: string, chapterNumber: number) {

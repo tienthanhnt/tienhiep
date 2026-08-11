@@ -107,39 +107,53 @@ def validate_content_storage_setup():
         raise e
 
 
-def read_book_info(translated_dir: str) -> tuple[str, str, str]:
-    """Đọc title, author, status từ book_info.txt."""
-    book_title = "Chưa đặt tên"
-    book_author = "Chưa rõ"
-    book_status = "Đang ra"
+def read_book_info(translated_dir: str) -> dict:
+    """Đọc metadata từ book_info.txt."""
+    book_info = {
+        "title": "Chưa đặt tên",
+        "author": "Chưa rõ",
+        "status": "Đang ra",
+        "description": "",
+        "genres": "",
+        "source_type": "",
+    }
     info_path = os.path.join(translated_dir, "book_info.txt")
 
     if os.path.exists(info_path):
         with open(info_path, "r", encoding="utf-8") as f:
             for line in f:
-                if line.startswith("title="):
-                    book_title = line.split("=", 1)[1].strip()
-                elif line.startswith("author="):
-                    book_author = line.split("=", 1)[1].strip()
-                elif line.startswith("status="):
-                    book_status = line.split("=", 1)[1].strip() or book_status
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if key in book_info:
+                    book_info[key] = value.strip() or book_info[key]
     else:
         print("⚠️  Không tìm thấy book_info.txt — dùng tiêu đề mặc định.")
 
-    return book_title, book_author, book_status
+    return book_info
 
 
-def get_or_create_book(title, author, status, cover_url=DEFAULT_COVER):
+def get_or_create_book(book_info: dict, cover_url=DEFAULT_COVER):
+    title = book_info["title"]
+    author = book_info["author"]
+
     # Kiểm tra xem truyện đã có trên DB chưa
     res = supabase.table("books").select("id").eq("title", title).execute()
     if len(res.data) > 0:
         book_id = res.data[0]['id']
         print(f"🔍 Đã tìm thấy truyện '{title}' trên Database (ID: {book_id})")
-        update_data = {"status": status}
+        update_data = {
+            "author": author,
+            "status": book_info["status"],
+            "description": book_info["description"],
+            "genres": book_info["genres"],
+            "source_type": book_info["source_type"],
+        }
         if cover_url != DEFAULT_COVER:
             update_data["cover_url"] = cover_url
         supabase.table("books").update(update_data).eq("id", book_id).execute()
-        print(f"ℹ️  Đã cập nhật trạng thái: {status}")
+        print(f"ℹ️  Đã cập nhật metadata: {book_info['status']}")
         if cover_url != DEFAULT_COVER:
             print(f"🖼️  Đã cập nhật ảnh bìa mới cho truyện ID={book_id}")
         return book_id
@@ -148,7 +162,10 @@ def get_or_create_book(title, author, status, cover_url=DEFAULT_COVER):
     book_data = {
         "title": title,
         "author": author,
-        "status": status,
+        "status": book_info["status"],
+        "description": book_info["description"],
+        "genres": book_info["genres"],
+        "source_type": book_info["source_type"],
         "rating": 8.0,
         "chapter_count": 0,
         "cover_url": cover_url
@@ -163,10 +180,10 @@ def upload_chapters(translated_dir, limit: int | None = None):
     validate_content_storage_setup()
 
     # Lấy thông tin truyện từ book_info.txt trong thư mục Translated
-    book_title, book_author, book_status = read_book_info(translated_dir)
+    book_info = read_book_info(translated_dir)
 
-    cover_url = upload_cover_image(translated_dir, book_title)
-    book_id = get_or_create_book(book_title, book_author, book_status, cover_url)
+    cover_url = upload_cover_image(translated_dir, book_info["title"])
+    book_id = get_or_create_book(book_info, cover_url)
     
     # Đọc danh sách các chương đã dịch
     files = sorted([f for f in os.listdir(translated_dir) if f.endswith(".md")])

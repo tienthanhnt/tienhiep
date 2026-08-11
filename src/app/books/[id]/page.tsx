@@ -20,6 +20,16 @@ interface Book {
   cover_url: string;
   status: string;
   chapter_count: number;
+  description?: string | null;
+  genres?: string | null;
+  source_type?: string | null;
+}
+
+function splitTags(value?: string | null) {
+  return (value || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 }
 
 async function getBookDetails(id: string) {
@@ -76,7 +86,7 @@ async function getBookSeoData(id: string) {
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/books?id=eq.${id}&select=id,title,author,cover_url,status,chapter_count`,
+      `${url}/rest/v1/books?id=eq.${id}`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         next: { revalidate: 900 },
@@ -135,9 +145,32 @@ export default async function BookDetailPage({ params }: { params: { id: string 
   }
 
   const { book, chapters } = data;
+  const tags = [...(book.source_type ? [book.source_type] : []), ...splitTags(book.genres)];
+  const siteUrl = getSiteUrl();
+  const bookUrl = `${siteUrl}/books/${book.id}`;
+  const bookDescription = buildBookDescription(book);
+  const bookJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    name: book.title,
+    author: book.author ? { "@type": "Person", name: book.author } : undefined,
+    description: bookDescription,
+    image: book.cover_url || undefined,
+    url: bookUrl,
+    inLanguage: "vi",
+    genre: splitTags(book.genres),
+    numberOfPages: book.chapter_count || chapters.length,
+  };
 
   return (
     <div className="flex flex-col gap-8 max-w-4xl mx-auto py-4">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(bookJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+
       {/* Back button */}
       <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-[#8C8373] hover:text-[#A37B34] font-medium w-fit">
         &larr; Trở về Trang Chủ
@@ -162,7 +195,21 @@ export default async function BookDetailPage({ params }: { params: { id: string 
               <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
                 {chapters.length} chương
               </span>
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="bg-[#FBFAF7] text-[#6B6357] px-3 py-1.5 rounded-md border border-[#DDD5C8]"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
+
+            {book.description && (
+              <p className="mt-5 max-w-2xl text-sm md:text-[15px] leading-7 text-[#5E5448]">
+                {book.description}
+              </p>
+            )}
           </div>
 
           {chapters.length > 0 && (

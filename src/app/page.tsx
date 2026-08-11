@@ -32,6 +32,8 @@ interface SupabaseBook {
   rating: number;
   status: 'Đang ra' | 'Hoàn thành';
   cover_url: string;
+  genres?: string | null;
+  source_type?: string | null;
 }
 
 async function getBooks() {
@@ -60,6 +62,8 @@ export default async function Home() {
         rating: b.rating || 8.0,
         status: (b.status || "Đang ra") as 'Đang ra' | 'Hoàn thành',
         coverUrl: b.cover_url || MOCK_BOOKS[0].coverUrl,
+        genres: b.genres || "",
+        sourceType: b.source_type || "",
       }))
     : MOCK_BOOKS;
 

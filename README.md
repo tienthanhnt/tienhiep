@@ -31,17 +31,23 @@ web/importer/
 ```
 title=Xích Tâm Tuần Thiên
 author=Tình Hà Dĩ Thậm
+status=Đang ra
+source_type=Dịch
+genres=Tiên hiệp, Kiếm hiệp
+description=Xích Tâm Tuần Thiên là truyện tiên hiệp kể về hành trình tu luyện, tranh đấu và trưởng thành giữa cục diện thiên hạ rộng lớn.
 ```
 > ⚠️ Giá trị `title=` là tên dùng trong tất cả lệnh `manage_books.py` — **không phải tên folder**.
+>
+> `description=`, `genres=` và `source_type=` là metadata SEO tùy chọn. Nên viết `description` ngắn gọn khoảng 1-2 câu, không nhồi từ khóa.
 
 ---
 
 ### BƯỚC 1 — Tách EPUB Thành Markdown
 
-`epub_to_md.py` đọc metadata `title/author` trong file EPUB, tạo thư mục riêng trong `chapters/`, ghi `book_info.txt`, rồi tách từng chương thành file Markdown dạng:
+`epub_to_md.py` đọc metadata `title/author` trong file EPUB, tạo thư mục riêng có hậu tố `_Translated` trong `chapters/`, ghi `book_info.txt`, rồi tách từng chương thành file Markdown dạng:
 
 ```text
-chapters/Ten_Truyen/
+chapters/Ten_Truyen_Translated/
 ├── book_info.txt
 ├── 0001_Ten_chuong.md
 └── 0002_Ten_chuong.md
@@ -60,8 +66,8 @@ python epub_to_md.py /duong/dan/truyen.epub
 
 Lưu ý:
 - Script chỉ nhận tham số vị trí, hiện chưa có `--help`.
-- Folder tạo ra chưa có đuôi `_Translated`, nên chưa được `upload_translated.py` upload tự động.
-- Sau khi tách EPUB, chạy bước dịch để tạo folder `_Translated`.
+- Folder tạo ra đã có đuôi `_Translated`, nên có thể upload trực tiếp bằng `upload_translated.py` nếu nội dung đã sẵn sàng.
+- Nếu vẫn muốn biên tập/dịch thêm, có thể dùng chính folder này làm source/target tùy workflow của bạn.
 
 ---
 
@@ -86,6 +92,16 @@ Trước khi upload theo cơ chế tiết kiệm database, tạo thêm 2 cột t
 ALTER TABLE chapters ADD COLUMN IF NOT EXISTS content_path TEXT;
 ALTER TABLE chapters ADD COLUMN IF NOT EXISTS content_url TEXT;
 ```
+
+Nếu muốn dùng metadata SEO cho truyện, chạy thêm SQL một lần:
+
+```sql
+ALTER TABLE books ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS genres TEXT;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS source_type TEXT;
+```
+
+Hoặc mở file `supabase_books_seo_metadata.sql` trong project và copy nội dung vào Supabase SQL Editor.
 
 Trong Supabase Storage, tạo bucket Public tên:
 
@@ -809,3 +825,5 @@ Sau khi tài liệu này được duyệt, bước tiếp theo mới là scaffol
 
 #### Domain page
 https://vercel.com/tienhiep/tienhiep/settings/domains
+
+source venv/bin/activate
