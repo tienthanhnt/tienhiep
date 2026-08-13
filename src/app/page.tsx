@@ -1,4 +1,4 @@
-import BookCard from "@/components/BookCard";
+import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
 
 export const revalidate = 600;
@@ -82,20 +82,7 @@ export default async function Home() {
 
       <RecentReading />
 
-      <section>
-        <div className="flex items-center gap-3 mb-5 border-l-2 border-[#B99654] pl-3">
-          <h2 className="text-base font-bold text-[#26211C] tracking-wide">
-            Danh sách truyện
-          </h2>
-          <span className="text-xs text-[#8C8373]">({books.length} bộ)</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 md:gap-6">
-          {books.map((book) => (
-            <BookCard key={book.id} {...book} />
-          ))}
-        </div>
-      </section>
+      <BookSearchSection books={books} />
 
     </div>
   );
