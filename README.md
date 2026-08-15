@@ -22,6 +22,7 @@ web/importer/
 │       ├── 0001_Ten_chuong.md
 │       └── 0002_Ten_chuong.md
 ├── epub_to_md.py                      ← Tách EPUB → Markdown theo chương
+├── txt_to_md.py                       ← Tách folder nhiều file TXT → Markdown theo chương
 ├── translate_chapters.py              ← Dịch raw → Markdown
 ├── upload_translated.py               ← Upload lên Supabase
 └── manage_books.py                    ← Quản lý / xóa / đồng bộ
@@ -68,6 +69,22 @@ Lưu ý:
 - Script chỉ nhận tham số vị trí, hiện chưa có `--help`.
 - Folder tạo ra đã có đuôi `_Translated`, nên có thể upload trực tiếp bằng `upload_translated.py` nếu nội dung đã sẵn sàng.
 - Nếu vẫn muốn biên tập/dịch thêm, có thể dùng chính folder này làm source/target tùy workflow của bạn.
+
+### Tách Folder TXT Thành Markdown
+
+Nếu truyện là một folder gồm nhiều file `.txt` lớn, mỗi file chứa nhiều chương và tiêu đề chương có dạng `Chương 1: ...`, dùng:
+
+```bash
+python txt_to_md.py /duong/dan/folder_txt chapters
+```
+
+Tool sẽ tạo folder output có hậu tố `_Translated`, ghi `book_info.txt` từ `gioithieu.txt` nếu có, rồi tách từng chương thành file `.md`.
+
+Nếu muốn convert lại và ghi đè các file `.md` cũ:
+
+```bash
+python txt_to_md.py /duong/dan/folder_txt chapters --overwrite
+```
 
 ---
 

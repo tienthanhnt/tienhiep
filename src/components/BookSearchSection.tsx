@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import BookCard from "@/components/BookCard";
 
 interface BookSearchItem {
@@ -17,6 +18,11 @@ interface BookSearchItem {
 
 interface BookSearchSectionProps {
   books: BookSearchItem[];
+  searchBooks: BookSearchItem[];
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize: number;
 }
 
 function normalizeSearchText(value: string) {
@@ -39,13 +45,31 @@ function getSearchContent(book: BookSearchItem) {
   ].filter(Boolean).join(" "));
 }
 
-export default function BookSearchSection({ books }: BookSearchSectionProps) {
+function getPageNumbers(currentPage: number, totalPages: number) {
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+}
+
+function pageHref(page: number) {
+  return page <= 1 ? "/" : `/?page=${page}`;
+}
+
+export default function BookSearchSection({
+  books,
+  searchBooks,
+  currentPage,
+  totalPages,
+  totalCount,
+  pageSize,
+}: BookSearchSectionProps) {
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
 
   const searchableBooks = useMemo(
-    () => books.map((book) => ({ book, searchContent: getSearchContent(book) })),
-    [books]
+    () => searchBooks.map((book) => ({ book, searchContent: getSearchContent(book) })),
+    [searchBooks]
   );
 
   const normalizedQuery = normalizeSearchText(query);
@@ -54,6 +78,10 @@ export default function BookSearchSection({ books }: BookSearchSectionProps) {
         .filter(({ searchContent }) => searchContent.includes(normalizedQuery))
         .map(({ book }) => book)
     : books;
+  const isSearching = Boolean(normalizedQuery);
+  const pageNumbers = getPageNumbers(currentPage, totalPages);
+  const firstVisible = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const lastVisible = Math.min(currentPage * pageSize, totalCount);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,7 +101,9 @@ export default function BookSearchSection({ books }: BookSearchSectionProps) {
             Danh sách truyện
           </h2>
           <span className="text-xs text-[#8C8373]">
-            ({filteredBooks.length}/{books.length} bộ)
+            {isSearching
+              ? `(${filteredBooks.length}/${searchBooks.length} bộ)`
+              : `(${firstVisible}-${lastVisible}/${totalCount} bộ)`}
           </span>
         </div>
 
@@ -119,6 +149,50 @@ export default function BookSearchSection({ books }: BookSearchSectionProps) {
         <div className="rounded-md border border-[#DDD5C8] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#6B6357]">
           Không tìm thấy truyện phù hợp.
         </div>
+      )}
+
+      {!isSearching && totalPages > 1 && (
+        <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Phân trang truyện">
+          {currentPage > 1 && (
+            <Link
+              href={pageHref(currentPage - 1)}
+              className="inline-flex h-9 items-center rounded-md border border-[#D8CDBB] bg-[#FBFAF7] px-3 text-sm font-semibold text-[#5C5449] transition hover:border-[#B99654] hover:text-[#7A5B1E]"
+            >
+              Trước
+            </Link>
+          )}
+
+          {pageNumbers.map((page, index) => {
+            const previousPage = pageNumbers[index - 1];
+            const showGap = previousPage && page - previousPage > 1;
+
+            return (
+              <span key={page} className="flex items-center gap-2">
+                {showGap && <span className="text-sm text-[#8C8373]">...</span>}
+                <Link
+                  href={pageHref(page)}
+                  aria-current={page === currentPage ? "page" : undefined}
+                  className={`inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-3 text-sm font-semibold transition ${
+                    page === currentPage
+                      ? "border-[#2C2825] bg-[#2C2825] text-white"
+                      : "border-[#D8CDBB] bg-[#FBFAF7] text-[#5C5449] hover:border-[#B99654] hover:text-[#7A5B1E]"
+                  }`}
+                >
+                  {page}
+                </Link>
+              </span>
+            );
+          })}
+
+          {currentPage < totalPages && (
+            <Link
+              href={pageHref(currentPage + 1)}
+              className="inline-flex h-9 items-center rounded-md border border-[#D8CDBB] bg-[#FBFAF7] px-3 text-sm font-semibold text-[#5C5449] transition hover:border-[#B99654] hover:text-[#7A5B1E]"
+            >
+              Sau
+            </Link>
+          )}
+        </nav>
       )}
     </section>
   );

@@ -22,6 +22,7 @@ interface ChapterNavItem {
 }
 
 const RECENT_READING_KEY = 'tang-kinh-cac:recent-reading';
+const RECENT_READING_LIMIT = 2;
 const TOC_PAGE_SIZE = 100;
 
 export default function ChapterReader({
@@ -220,7 +221,7 @@ export default function ChapterReader({
           updatedAt: Date.now(),
         },
         ...list.filter((item) => item?.bookId !== bookId),
-      ].slice(0, 6);
+      ].slice(0, RECENT_READING_LIMIT);
       window.localStorage.setItem(RECENT_READING_KEY, JSON.stringify(next));
     } catch {
       // Ignore private browsing or malformed localStorage data.

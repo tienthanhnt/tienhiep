@@ -3,6 +3,7 @@ import sys
 import re
 import argparse
 import gzip
+import time
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import markdown
@@ -23,6 +24,8 @@ STORAGE_BUCKET = "covers"
 CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80"
 UPLOADABLE_DIR_SUFFIX = "_Translated"
+CHAPTER_INSERT_BATCH_SIZE = 50
+UPLOAD_RETRY_COUNT = 3
 
 
 def safe_storage_name(value: str) -> str:
@@ -67,28 +70,37 @@ def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str
     safe_title = safe_storage_name(chapter_title)
     content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html.gz"
 
-    try:
+    compressed_html = gzip.compress(html_content.encode("utf-8"), compresslevel=9)
+    last_error = None
+
+    for attempt in range(1, UPLOAD_RETRY_COUNT + 1):
         try:
-            supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove([content_path])
-        except Exception:
-            pass
+            try:
+                supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove([content_path])
+            except Exception:
+                pass
 
-        compressed_html = gzip.compress(html_content.encode("utf-8"), compresslevel=9)
+            supabase.storage.from_(CONTENT_STORAGE_BUCKET).upload(
+                content_path,
+                compressed_html,
+                {
+                    "content-type": "application/gzip",
+                    "cache-control": "3600"
+                }
+            )
+            public_url = supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
+            return content_path, public_url
+        except Exception as e:
+            last_error = e
+            if attempt < UPLOAD_RETRY_COUNT:
+                wait_seconds = attempt * 3
+                print(f"⚠️  Upload chương {chapter_number} lỗi lần {attempt}/{UPLOAD_RETRY_COUNT}: {e}")
+                print(f"   Chờ {wait_seconds}s rồi thử lại...")
+                time.sleep(wait_seconds)
 
-        supabase.storage.from_(CONTENT_STORAGE_BUCKET).upload(
-            content_path,
-            compressed_html,
-            {
-                "content-type": "application/gzip",
-                "cache-control": "3600"
-            }
-        )
-        public_url = supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
-        return content_path, public_url
-    except Exception as e:
-        print(f"❌ Lỗi upload nội dung chương {chapter_number}: {e}")
-        print(f"   Gợi ý: Hãy tạo bucket '{CONTENT_STORAGE_BUCKET}' (Public) trong Supabase Storage.")
-        raise
+    print(f"❌ Lỗi upload nội dung chương {chapter_number}: {last_error}")
+    print("   Đây thường là lỗi mạng/Supabase Storage timeout. Chạy lại script để tiếp tục từ chương còn thiếu.")
+    raise last_error
 
 
 def validate_content_storage_setup():
@@ -177,6 +189,20 @@ def get_or_create_book(book_info: dict, cover_url=DEFAULT_COVER):
 
 def upload_chapters(translated_dir, limit: int | None = None):
     print(f"📖 Đang đọc các chương từ: {translated_dir}")
+
+    if not os.path.isdir(translated_dir):
+        print(f"❌ Không tìm thấy thư mục: {translated_dir}")
+        return
+
+    files = sorted([f for f in os.listdir(translated_dir) if f.endswith(".md")])
+    if limit is not None:
+        files = files[:limit]
+        print(f"🧪 Chế độ upload thử: chỉ xử lý {len(files)} chương đầu.")
+
+    if not files:
+        print("⚠️ Không tìm thấy file .md nào trong thư mục dịch. Dừng trước khi tạo/cập nhật truyện.")
+        return
+
     validate_content_storage_setup()
 
     # Lấy thông tin truyện từ book_info.txt trong thư mục Translated
@@ -184,18 +210,19 @@ def upload_chapters(translated_dir, limit: int | None = None):
 
     cover_url = upload_cover_image(translated_dir, book_info["title"])
     book_id = get_or_create_book(book_info, cover_url)
-    
-    # Đọc danh sách các chương đã dịch
-    files = sorted([f for f in os.listdir(translated_dir) if f.endswith(".md")])
-    if limit is not None:
-        files = files[:limit]
-        print(f"🧪 Chế độ upload thử: chỉ xử lý {len(files)} chương đầu.")
-
-    if not files:
-        print("⚠️ Không tìm thấy file .md nào trong thư mục dịch.")
-        return
 
     chapters_to_insert = []
+    inserted_count = 0
+    failed_chapter = None
+
+    def flush_chapter_batch():
+        nonlocal chapters_to_insert, inserted_count
+        if not chapters_to_insert:
+            return
+        supabase.table("chapters").insert(chapters_to_insert).execute()
+        inserted_count += len(chapters_to_insert)
+        print(f"  📦 Đã ghi {inserted_count} chương mới vào DB...")
+        chapters_to_insert = []
     
     for filename in files:
         # Lấy số chương từ tên file (ví dụ: 0001_Xich_Tam_Tuan_Thien.md -> 1)
@@ -224,12 +251,16 @@ def upload_chapters(translated_dir, limit: int | None = None):
             print(f"[-] Bỏ qua Chương {chapter_number}: Đã có trên Database.")
             continue
 
-        content_path, content_url = upload_chapter_content(
-            book_id,
-            chapter_number,
-            chapter_title,
-            html_content
-        )
+        try:
+            content_path, content_url = upload_chapter_content(
+                book_id,
+                chapter_number,
+                chapter_title,
+                html_content
+            )
+        except Exception:
+            failed_chapter = chapter_number
+            break
             
         chapters_to_insert.append({
             "book_id": book_id,
@@ -239,23 +270,26 @@ def upload_chapters(translated_dir, limit: int | None = None):
             "content_url": content_url,
             "chapter_number": chapter_number
         })
+
+        if len(chapters_to_insert) >= CHAPTER_INSERT_BATCH_SIZE:
+            flush_chapter_batch()
+
+    flush_chapter_batch()
         
-    if not chapters_to_insert:
+    if inserted_count == 0 and failed_chapter is None:
         print("✅ Tất cả các chương hiện tại đều đã được upload lên DB.")
         return
-        
-    print(f"📦 Đang đẩy {len(chapters_to_insert)} chương mới lên DB...")
-    
-    # Chia nhỏ mỗi lần upload 50 chương
-    for i in range(0, len(chapters_to_insert), 50):
-        batch = chapters_to_insert[i:i+50]
-        supabase.table("chapters").insert(batch).execute()
-        print(f"  Đã đẩy {min(i+50, len(chapters_to_insert))}/{len(chapters_to_insert)} chương...")
         
     # Cập nhật tổng số lượng chương
     res = supabase.table("chapters").select("id", count="exact").eq("book_id", book_id).execute()
     total_chapters = res.count
     supabase.table("books").update({"chapter_count": total_chapters}).eq("id", book_id).execute()
+
+    if failed_chapter is not None:
+        print(f"⚠️  Dừng ở Chương {failed_chapter} do lỗi upload Storage.")
+        print(f"   Đã lưu DB các batch trước đó. Tổng chương hiện có trong DB: {total_chapters}.")
+        print("   Hãy chạy lại cùng lệnh, script sẽ bỏ qua chương đã có và tiếp tục phần còn lại.")
+        return
     
     print("🎉 Quá trình Upload lên Web hoàn tất!")
 

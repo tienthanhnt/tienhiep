@@ -12,6 +12,7 @@ interface RecentItem {
 }
 
 const STORAGE_KEY = 'tang-kinh-cac:recent-reading';
+const RECENT_READING_LIMIT = 2;
 
 export default function RecentReading() {
   const [items, setItems] = useState<RecentItem[]>([]);
@@ -22,7 +23,9 @@ export default function RecentReading() {
       if (!raw) return;
       const parsed = JSON.parse(raw) as RecentItem[];
       if (Array.isArray(parsed)) {
-        setItems(parsed.slice(0, 4));
+        const recentItems = parsed.slice(0, RECENT_READING_LIMIT);
+        setItems(recentItems);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(recentItems));
       }
     } catch {
       setItems([]);
