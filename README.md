@@ -35,11 +35,14 @@ author=Tình Hà Dĩ Thậm
 status=Đang ra
 source_type=Dịch
 genres=Tiên hiệp, Kiếm hiệp
+ranking=10
 description=Xích Tâm Tuần Thiên là truyện tiên hiệp kể về hành trình tu luyện, tranh đấu và trưởng thành giữa cục diện thiên hạ rộng lớn.
 ```
 > ⚠️ Giá trị `title=` là tên dùng trong tất cả lệnh `manage_books.py` — **không phải tên folder**.
 >
 > `description=`, `genres=` và `source_type=` là metadata SEO tùy chọn. Nên viết `description` ngắn gọn khoảng 1-2 câu, không nhồi từ khóa.
+>
+> `ranking=` là thứ tự ưu tiên ngoài trang chủ. Số càng nhỏ càng hiện trước. Bỏ trống thì tự xếp sau các truyện có ranking và theo `id`.
 
 ---
 
@@ -148,6 +151,17 @@ GRANT EXECUTE ON FUNCTION increment_book_view(INTEGER) TO authenticated;
 ```
 
 Hoặc mở file `supabase_book_views.sql` trong project và copy nội dung vào Supabase SQL Editor.
+
+Nếu muốn tự ưu tiên thứ tự hiển thị truyện ngoài trang chủ, chạy thêm SQL một lần:
+
+```sql
+ALTER TABLE books ADD COLUMN IF NOT EXISTS ranking INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_books_ranking_id
+ON books (ranking ASC NULLS LAST, id ASC);
+```
+
+Hoặc mở file `supabase_book_ranking.sql` trong project và copy nội dung vào Supabase SQL Editor.
 
 Trong Supabase Storage, tạo bucket Public tên:
 

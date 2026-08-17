@@ -33,6 +33,17 @@ def safe_storage_name(value: str) -> str:
     return safe_name[:80] or "chapter"
 
 
+def parse_optional_int(value: str, field_name: str) -> int | None:
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        print(f"⚠️  {field_name} phải là số nguyên, đang bỏ qua giá trị: {value}")
+        return None
+
+
 def upload_cover_image(translated_dir: str, book_title: str) -> str:
     """Upload theme.png từ thư mục Translated lên Supabase Storage. Trả về public URL."""
     theme_path = os.path.join(translated_dir, "theme.png")
@@ -128,6 +139,7 @@ def read_book_info(translated_dir: str) -> dict:
         "description": "",
         "genres": "",
         "source_type": "",
+        "ranking": "",
     }
     info_path = os.path.join(translated_dir, "book_info.txt")
 
@@ -149,6 +161,7 @@ def read_book_info(translated_dir: str) -> dict:
 def get_or_create_book(book_info: dict, cover_url=DEFAULT_COVER):
     title = book_info["title"]
     author = book_info["author"]
+    ranking = parse_optional_int(book_info["ranking"], "ranking")
 
     # Kiểm tra xem truyện đã có trên DB chưa
     res = supabase.table("books").select("id").eq("title", title).execute()
@@ -162,6 +175,8 @@ def get_or_create_book(book_info: dict, cover_url=DEFAULT_COVER):
             "genres": book_info["genres"],
             "source_type": book_info["source_type"],
         }
+        if ranking is not None:
+            update_data["ranking"] = ranking
         if cover_url != DEFAULT_COVER:
             update_data["cover_url"] = cover_url
         supabase.table("books").update(update_data).eq("id", book_id).execute()
@@ -182,6 +197,8 @@ def get_or_create_book(book_info: dict, cover_url=DEFAULT_COVER):
         "chapter_count": 0,
         "cover_url": cover_url
     }
+    if ranking is not None:
+        book_data["ranking"] = ranking
     res = supabase.table("books").insert(book_data).execute()
     book_id = res.data[0]['id']
     print(f"✅ Đã tạo truyện mới với ID = {book_id}")

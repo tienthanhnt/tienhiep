@@ -65,6 +65,17 @@ def safe_storage_name(value: str) -> str:
     return safe_name[:80] or "chapter"
 
 
+def parse_optional_int(value: str, field_name: str) -> int | None:
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        print(f"⚠️  {field_name} phải là số nguyên, đang bỏ qua giá trị: {value}")
+        return None
+
+
 def find_book_by_title(title: str):
     res = supabase.table("books").select("id, title, chapter_count").eq("title", title).execute()
     return res.data[0] if res.data else None
@@ -84,6 +95,7 @@ def read_book_info(translated_dir: str) -> dict:
         "description": "",
         "genres": "",
         "source_type": "",
+        "ranking": "",
     }
     info_path = os.path.join(translated_dir, "book_info.txt")
     if os.path.exists(info_path):
@@ -241,15 +253,16 @@ def upload_all_chapters(book_id: int, translated_dir: str):
 
 def cmd_list():
     """Liệt kê tất cả truyện trong DB."""
-    res = supabase.table("books").select("id, title, author, chapter_count, status").order("id").execute()
+    res = supabase.table("books").select("id, title, author, chapter_count, status, ranking").order("ranking", desc=False, nullsfirst=False).order("id").execute()
     books = res.data
     if not books:
         print("📭 Chưa có truyện nào trong Database.")
         return
-    print(f"\n{'ID':<6} {'Tên Truyện':<40} {'Tác Giả':<20} {'Chương':<8} {'TT'}")
-    print("─" * 85)
+    print(f"\n{'ID':<6} {'Rank':<6} {'Tên Truyện':<40} {'Tác Giả':<20} {'Chương':<8} {'TT'}")
+    print("─" * 95)
     for b in books:
-        print(f"{b['id']:<6} {b['title']:<40} {(b['author'] or 'Chưa rõ'):<20} {(b['chapter_count'] or 0):<8} {b['status'] or ''}")
+        rank = b.get("ranking") if b.get("ranking") is not None else ""
+        print(f"{b['id']:<6} {rank!s:<6} {b['title']:<40} {(b['author'] or 'Chưa rõ'):<20} {(b['chapter_count'] or 0):<8} {b['status'] or ''}")
     print(f"\n✅ Tổng cộng: {len(books)} truyện")
 
 
@@ -381,6 +394,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
 
     book_info = read_book_info(translated_dir)
     title = book_info["title"]
+    ranking = parse_optional_int(book_info["ranking"], "ranking")
     book = find_book_by_title(title)
 
     print(f"\n🔄 RESYNC: {title}")
@@ -394,20 +408,23 @@ def cmd_resync(translated_dir: str, force: bool = False):
         # Xóa tất cả chương cũ
         delete_book_content_files(book["id"])
         supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
-        supabase.table("books").update({
+        update_data = {
             "chapter_count": 0,
             "author": book_info["author"],
             "status": book_info["status"],
             "description": book_info["description"],
             "genres": book_info["genres"],
             "source_type": book_info["source_type"],
-        }).eq("id", book["id"]).execute()
+        }
+        if ranking is not None:
+            update_data["ranking"] = ranking
+        supabase.table("books").update(update_data).eq("id", book["id"]).execute()
         print(f"🗑️  Đã xóa chương cũ của '{title}'")
         book_id = book["id"]
     else:
         # Tạo mới
         cover_url = upload_cover(translated_dir, title)
-        res = supabase.table("books").insert({
+        insert_data = {
             "title": title,
             "author": book_info["author"],
             "status": book_info["status"],
@@ -416,20 +433,26 @@ def cmd_resync(translated_dir: str, force: bool = False):
             "source_type": book_info["source_type"],
             "rating": 8.0,
             "chapter_count": 0, "cover_url": cover_url
-        }).execute()
+        }
+        if ranking is not None:
+            insert_data["ranking"] = ranking
+        res = supabase.table("books").insert(insert_data).execute()
         book_id = res.data[0]["id"]
         print(f"✅ Đã tạo truyện mới (ID={book_id})")
 
     # Upload lại
     cover_url = upload_cover(translated_dir, title)
-    supabase.table("books").update({
+    update_data = {
         "cover_url": cover_url,
         "author": book_info["author"],
         "status": book_info["status"],
         "description": book_info["description"],
         "genres": book_info["genres"],
         "source_type": book_info["source_type"],
-    }).eq("id", book_id).execute()
+    }
+    if ranking is not None:
+        update_data["ranking"] = ranking
+    supabase.table("books").update(update_data).eq("id", book_id).execute()
 
     total = upload_all_chapters(book_id, translated_dir)
     print(f"🎉 Resync hoàn tất: {total} chương đã được upload lại.")

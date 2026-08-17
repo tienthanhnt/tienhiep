@@ -18,6 +18,7 @@ const MOCK_BOOKS = [
     genres: "",
     sourceType: "",
     viewCount: 0,
+    ranking: null,
   },
   {
     id: 102,
@@ -30,6 +31,7 @@ const MOCK_BOOKS = [
     genres: "",
     sourceType: "",
     viewCount: 0,
+    ranking: null,
   },
 ];
 
@@ -44,6 +46,7 @@ interface SupabaseBook {
   genres?: string | null;
   source_type?: string | null;
   view_count?: number | null;
+  ranking?: number | null;
 }
 
 interface BookItem {
@@ -57,6 +60,7 @@ interface BookItem {
   genres: string;
   sourceType: string;
   viewCount: number;
+  ranking: number | null;
 }
 
 function mapBook(b: SupabaseBook): BookItem {
@@ -71,6 +75,7 @@ function mapBook(b: SupabaseBook): BookItem {
     genres: b.genres || "",
     sourceType: b.source_type || "",
     viewCount: b.view_count || 0,
+    ranking: b.ranking ?? null,
   };
 }
 
@@ -87,7 +92,7 @@ async function getBooksPage(page: number) {
 
   const offset = (page - 1) * BOOKS_PER_PAGE;
   try {
-    const res = await fetch(`${url}/rest/v1/books?select=*&order=id.asc&limit=${BOOKS_PER_PAGE}&offset=${offset}`, {
+    const res = await fetch(`${url}/rest/v1/books?select=*&order=ranking.asc.nullslast,id.asc&limit=${BOOKS_PER_PAGE}&offset=${offset}`, {
       headers: {
         apikey: key,
         Authorization: `Bearer ${key}`,
@@ -111,7 +116,7 @@ async function getSearchBooks() {
   if (!url || !key) return [];
 
   try {
-    const res = await fetch(`${url}/rest/v1/books?select=id,title,author,chapter_count,rating,status,cover_url,genres,source_type&order=id.asc`, {
+    const res = await fetch(`${url}/rest/v1/books?select=id,title,author,chapter_count,rating,status,cover_url,genres,source_type,view_count,ranking&order=ranking.asc.nullslast,id.asc`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
       next: { revalidate: 600 },
     });
