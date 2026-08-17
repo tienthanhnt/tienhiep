@@ -1,5 +1,6 @@
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
+import { formatCompactNumber } from "@/lib/format";
 import { redirect } from "next/navigation";
 
 export const revalidate = 600;
@@ -16,6 +17,7 @@ const MOCK_BOOKS = [
     coverUrl: "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
     genres: "",
     sourceType: "",
+    viewCount: 0,
   },
   {
     id: 102,
@@ -27,6 +29,7 @@ const MOCK_BOOKS = [
     coverUrl: "https://images.unsplash.com/photo-1618666012174-83b441c0bc76?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
     genres: "",
     sourceType: "",
+    viewCount: 0,
   },
 ];
 
@@ -40,6 +43,7 @@ interface SupabaseBook {
   cover_url: string;
   genres?: string | null;
   source_type?: string | null;
+  view_count?: number | null;
 }
 
 interface BookItem {
@@ -52,6 +56,7 @@ interface BookItem {
   coverUrl: string;
   genres: string;
   sourceType: string;
+  viewCount: number;
 }
 
 function mapBook(b: SupabaseBook): BookItem {
@@ -65,6 +70,7 @@ function mapBook(b: SupabaseBook): BookItem {
     coverUrl: b.cover_url || MOCK_BOOKS[0].coverUrl,
     genres: b.genres || "",
     sourceType: b.source_type || "",
+    viewCount: b.view_count || 0,
   };
 }
 
@@ -131,6 +137,7 @@ export default async function Home({
     ? dbBooks.map(mapBook)
     : MOCK_BOOKS;
   const searchBooks = searchDbBooks.length > 0 ? searchDbBooks.map(mapBook) : books;
+  const totalViewCount = searchBooks.reduce((sum, book) => sum + (book.viewCount || 0), 0);
   const totalPages = Math.max(1, Math.ceil((totalCount || books.length) / BOOKS_PER_PAGE));
 
   if (totalCount > 0 && requestedPage > totalPages) {
@@ -160,6 +167,10 @@ export default async function Home({
         totalCount={totalCount || books.length}
         pageSize={BOOKS_PER_PAGE}
       />
+
+      <div className="self-center rounded border border-[#E8E0D2] px-2.5 py-1 text-[11px] text-[#A09688]">
+        Tổng lượt đọc: {formatCompactNumber(totalViewCount)}
+      </div>
 
     </div>
   );

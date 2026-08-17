@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { formatCompactNumber } from '@/lib/format';
 
 interface BookCardProps {
   id: number;
@@ -10,6 +11,7 @@ interface BookCardProps {
   coverUrl: string;
   genres?: string;
   sourceType?: string;
+  viewCount?: number;
 }
 
 function splitTags(value?: string) {
@@ -19,7 +21,7 @@ function splitTags(value?: string) {
     .filter(Boolean);
 }
 
-export default function BookCard({ id, title, author, chapterCount, status, coverUrl, genres, sourceType }: BookCardProps) {
+export default function BookCard({ id, title, author, chapterCount, status, coverUrl, genres, sourceType, viewCount }: BookCardProps) {
   const tags = [...(sourceType ? [sourceType] : []), ...splitTags(genres)].slice(0, 3);
 
   return (
@@ -43,6 +45,10 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
           <span className="truncate">{author}</span>
           <span className="mx-1.5 opacity-50">•</span>
           <span className="shrink-0">{chapterCount} chương</span>
+        </div>
+
+        <div className="mt-1.5 text-[11px] md:text-xs text-[#8C8373]">
+          {formatCompactNumber(viewCount)} lượt đọc
         </div>
 
         <div className="mt-2 flex flex-wrap gap-1.5">

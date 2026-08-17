@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
+import { formatCompactNumber } from '@/lib/format';
 import { buildBookDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const revalidate = 900;
@@ -23,6 +24,7 @@ interface Book {
   description?: string | null;
   genres?: string | null;
   source_type?: string | null;
+  view_count?: number | null;
 }
 
 function splitTags(value?: string | null) {
@@ -194,6 +196,9 @@ export default async function BookDetailPage({ params }: { params: { id: string 
               </span>
               <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
                 {chapters.length} chương
+              </span>
+              <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
+                {formatCompactNumber(book.view_count)} lượt đọc
               </span>
               {tags.map((tag) => (
                 <span

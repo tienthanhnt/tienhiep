@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -22,7 +22,7 @@ interface ChapterNavItem {
 }
 
 const RECENT_READING_KEY = 'tang-kinh-cac:recent-reading';
-const RECENT_READING_LIMIT = 2;
+const RECENT_READING_LIMIT = 1;
 const TOC_PAGE_SIZE = 100;
 
 export default function ChapterReader({
@@ -49,6 +49,7 @@ export default function ChapterReader({
   const [tocError, setTocError] = useState('');
   const [tocSearchResults, setTocSearchResults] = useState<ChapterNavItem[] | null>(null);
   const [tocSearchLoading, setTocSearchLoading] = useState(false);
+  const trackedViewKey = useRef('');
 
   const prevHref = prevNum ? `/books/${bookId}/chapters/${prevNum}` : null;
   const nextHref = nextNum ? `/books/${bookId}/chapters/${nextNum}` : null;
@@ -79,6 +80,19 @@ export default function ChapterReader({
     if (prevHref) router.prefetch(prevHref);
     if (nextHref) router.prefetch(nextHref);
   }, [nextHref, prevHref, router]);
+
+  useEffect(() => {
+    const viewKey = `${bookId}:${chapterNumber}`;
+    if (trackedViewKey.current === viewKey) return;
+    trackedViewKey.current = viewKey;
+
+    fetch(`/api/books/${bookId}/views`, {
+      method: 'POST',
+      keepalive: true,
+    }).catch(() => {
+      // View tracking should never interrupt reading.
+    });
+  }, [bookId, chapterNumber]);
 
   useEffect(() => {
     setLoadingChapter(null);
