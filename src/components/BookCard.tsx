@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { formatCompactNumber } from '@/lib/format';
 
 interface BookCardProps {
@@ -28,9 +29,11 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
     <Link href={`/books/${id}`} className="group flex flex-col gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#B99654]/50">
       {/* Cover */}
       <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md border border-[#D8CDBB] bg-[#EFE9DC] shadow-[0_4px_14px_rgba(66,52,35,0.08)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#B99654]/70 group-hover:shadow-[0_10px_24px_rgba(66,52,35,0.14)]">
-        <img
+        <Image
           src={coverUrl}
           alt={title}
+          fill
+          sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 22vw, 180px"
           className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-[1.025]"
         />
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent opacity-80" />

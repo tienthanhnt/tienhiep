@@ -59,6 +59,8 @@ DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=
 UPLOADABLE_DIR_SUFFIX = "_Translated"
 COVER_CACHE_CONTROL = "86400"
 CHAPTER_CACHE_CONTROL = "86400"
+COVER_SIZE = "320x480"
+COVER_QUALITY = "66"
 
 
 # ─────────────────────────────────────────
@@ -121,29 +123,29 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
     temp.close()
     command = [
         converter,
-        "-size", "420x630",
+        "-size", COVER_SIZE,
         "gradient:#fffdf8-#eadbc4",
         "-fill", "#efe4d2",
-        "-draw", "rectangle 24,24 396,606",
+        "-draw", "rectangle 18,18 302,462",
         "-fill", "#fbf7ef",
-        "-draw", "rectangle 34,34 386,596",
+        "-draw", "rectangle 26,26 294,454",
         "-fill", "#c8a96a",
-        "-draw", "line 92,124 328,124 line 92,506 328,506",
+        "-draw", "line 70,94 250,94 line 70,386 250,386",
         "-font", "DejaVu-Serif-Bold",
         "-fill", "#24201d",
         "-pointsize", str(title_size),
         "-gravity", "center",
-        "-annotate", "+0-42", title_text,
+        "-annotate", "+0-32", title_text,
         "-font", "DejaVu-Serif",
         "-fill", "#6b5740",
         "-pointsize", "20",
-        "-annotate", "+0+172", author_text,
+        "-annotate", "+0+132", author_text,
         "-font", "DejaVu-Serif",
         "-fill", "#a37b34",
         "-pointsize", "18",
-        "-annotate", "+0+238", "Tiên Hiệp Lâu",
+        "-annotate", "+0+182", "Tiên Hiệp Lâu",
         "-strip",
-        "-quality", "72",
+        "-quality", COVER_QUALITY,
         "-define", "webp:method=6",
         temp.name,
     ]
@@ -173,10 +175,10 @@ def create_optimized_cover(source_path: str) -> tuple[str, str, str] | None:
         source_path,
         "-auto-orient",
         "-resize",
-        "420x630>",
+        f"{COVER_SIZE}>",
         "-strip",
         "-quality",
-        "72",
+        COVER_QUALITY,
         "-define",
         "webp:method=6",
         temp.name,

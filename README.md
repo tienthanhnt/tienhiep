@@ -73,6 +73,30 @@ Lưu ý:
 - Folder tạo ra đã có đuôi `_Translated`, nên có thể upload trực tiếp bằng `upload_translated.py` nếu nội dung đã sẵn sàng.
 - Nếu vẫn muốn biên tập/dịch thêm, có thể dùng chính folder này làm source/target tùy workflow của bạn.
 
+### Convert Từ File `all_tien_hiep.json`
+
+Nếu file `all_tien_hiep.json` và các file `.epub` nằm trong `importer/tien_hiep/`, có thể dùng tool batch để lấy metadata, ranking, description, tag từ JSON rồi convert ra folder `_Translated`.
+
+```bash
+cd importer
+
+# Xem 3 truyện tiếp theo sẽ được xử lý, chưa convert/upload
+python upload_from_tien_hiep_json.py --count 3 --dry-run
+
+# Chỉ convert 3 truyện đầu ra file .md, chưa upload database
+python upload_from_tien_hiep_json.py --count 3 --convert-only
+
+# Nếu đã convert 3 truyện đầu nhưng chưa upload, bỏ qua 3 truyện đó và convert 20 truyện tiếp theo
+python upload_from_tien_hiep_json.py --offset 3 --count 20 --convert-only
+
+# Sau khi kiểm tra folder .md ổn, upload từng truyện một
+python upload_from_tien_hiep_json.py --count 1 --upload-only
+```
+
+> ✅ Khi upload, tool chỉ đánh dấu `uploaded=true` trong JSON sau khi số chương trên database đã đủ bằng số file `.md` local.
+>
+> ✅ Nếu upload bị dừng giữa chừng, chạy lại lệnh upload sẽ tiếp tục bỏ qua chương đã có và đẩy các chương còn thiếu.
+
 ### Tách Folder TXT Thành Markdown
 
 Nếu truyện là một folder gồm nhiều file `.txt` lớn, mỗi file chứa nhiều chương và tiêu đề chương có dạng `Chương 1: ...`, dùng:
@@ -190,6 +214,7 @@ python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated --co
 > ✅ Script tự động bỏ qua chương đã tồn tại — chạy nhiều lần không bị trùng.
 >
 > 🖼️ Nếu máy có ImageMagick (`convert` hoặc `magick`), ảnh bìa `theme.webp/theme.jpg/theme.jpeg/theme.png` sẽ được resize/nén và upload thành `.webp` nhẹ hơn để giảm Supabase Storage egress.
+> Mặc định ảnh upload được tối ưu về tối đa `320x480`, WebP quality `66`.
 > Nếu thư mục truyện chưa có ảnh bìa, script sẽ tự tạo `theme.webp` rất nhẹ từ `title=` và `author=` trong `book_info.txt`.
 
 ---

@@ -4,9 +4,11 @@ import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
 import { buildChapterDescription, getCleanChapterTitle, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
-export const revalidate = 900;
+const CHAPTER_PAGE_REVALIDATE_SECONDS = 86400;
+const CHAPTER_CONTENT_REVALIDATE_SECONDS = 604800;
+
+export const revalidate = CHAPTER_PAGE_REVALIDATE_SECONDS;
 export const runtime = 'nodejs';
-const CHAPTER_CONTENT_REVALIDATE_SECONDS = 86400;
 
 interface Chapter {
   id: number;
@@ -55,13 +57,13 @@ async function getChapterData(bookId: string, chapterNum: string) {
     const [resBook, resChapter] = await Promise.all([
       fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,chapter_count`, {
         headers,
-        next: { revalidate: 900 },
+        next: { revalidate: CHAPTER_PAGE_REVALIDATE_SECONDS },
       }),
       fetch(
         `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=id,book_id,chapter_number,title,content_html,content_url,content_path`,
         {
           headers,
-          next: { revalidate: 900 },
+          next: { revalidate: CHAPTER_PAGE_REVALIDATE_SECONDS },
         }
       ),
     ]);
@@ -105,13 +107,13 @@ async function getChapterSeoData(bookId: string, chapterNum: string) {
     const [resBook, resChapter] = await Promise.all([
       fetch(`${url}/rest/v1/books?id=eq.${bookId}&select=id,title,cover_url`, {
         headers,
-        next: { revalidate: 900 },
+        next: { revalidate: CHAPTER_PAGE_REVALIDATE_SECONDS },
       }),
       fetch(
         `${url}/rest/v1/chapters?book_id=eq.${bookId}&chapter_number=eq.${chapterNum}&select=chapter_number,title`,
         {
           headers,
-          next: { revalidate: 900 },
+          next: { revalidate: CHAPTER_PAGE_REVALIDATE_SECONDS },
         }
       ),
     ]);

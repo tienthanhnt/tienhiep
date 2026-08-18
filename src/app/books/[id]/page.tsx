@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
@@ -180,9 +181,12 @@ export default async function BookDetailPage({ params }: { params: { id: string 
 
       {/* Book Info Header */}
       <div className="p-5 md:p-6 rounded-lg flex flex-col md:flex-row gap-7 border border-[#DDD5C8] bg-[#FBFAF7]/90 shadow-[0_8px_26px_rgba(66,52,35,0.07)]">
-        <img
+        <Image
           src={book.cover_url || "https://images.unsplash.com/photo-1541963463532-d68292c34b19"}
           alt={book.title}
+          width={176}
+          height={256}
+          sizes="176px"
           className="w-44 h-64 object-cover rounded-md border border-[#D8CDBB] self-center md:self-start shrink-0 shadow-[0_10px_22px_rgba(66,52,35,0.13)]"
         />
         <div className="flex flex-col justify-between flex-1 gap-4">

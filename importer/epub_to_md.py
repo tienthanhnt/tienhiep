@@ -233,7 +233,7 @@ def convert_to_chapters(epub_path: str, output_dir: str):
         book = epub.read_epub(epub_path)
     except Exception as e:
         print(f"❌ Không thể đọc file Epub: {e}")
-        return
+        return None
 
     # Lấy tên truyện và tác giả
     title_meta = book.get_metadata('DC', 'title')
@@ -341,6 +341,7 @@ def convert_to_chapters(epub_path: str, output_dir: str):
     print(f"\n📌 Bước tiếp theo:")
     print(f"   1. Nếu cần biên tập/dịch thêm, chạy translate_chapters.py trên thư mục này.")
     print(f"   2. Chạy upload_translated.py --translated-dir '{book_folder}' để upload lên Supabase\n")
+    return book_folder
 
 
 if __name__ == "__main__":
