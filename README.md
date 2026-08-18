@@ -18,7 +18,7 @@ web/importer/
 │   ├── Ten_Truyen/                    ← Markdown tách từ EPUB, chưa dịch
 │   └── Ten_Truyen_Translated/         ← Markdown đã dịch, folder kết thúc bằng _Translated
 │       ├── book_info.txt              ← Metadata
-│       ├── theme.png                  ← Ảnh bìa
+│       ├── theme.png                  ← Ảnh bìa (cũng hỗ trợ theme.webp/theme.jpg/theme.jpeg)
 │       ├── 0001_Ten_chuong.md
 │       └── 0002_Ten_chuong.md
 ├── epub_to_md.py                      ← Tách EPUB → Markdown theo chương
@@ -180,8 +180,17 @@ python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated
 
 # Upload từ thư mục cha khác
 python upload_translated.py --scan-dir /duong/dan/khac
+
+# Chỉ tối ưu/upload lại ảnh bìa, không upload chương
+python upload_translated.py --covers-only
+
+# Chỉ tối ưu/upload lại ảnh bìa của 1 truyện
+python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated --covers-only
 ```
 > ✅ Script tự động bỏ qua chương đã tồn tại — chạy nhiều lần không bị trùng.
+>
+> 🖼️ Nếu máy có ImageMagick (`convert` hoặc `magick`), ảnh bìa `theme.webp/theme.jpg/theme.jpeg/theme.png` sẽ được resize/nén và upload thành `.webp` nhẹ hơn để giảm Supabase Storage egress.
+> Nếu thư mục truyện chưa có ảnh bìa, script sẽ tự tạo `theme.webp` rất nhẹ từ `title=` và `author=` trong `book_info.txt`.
 
 ---
 

@@ -35,6 +35,9 @@ import sys
 import re
 import argparse
 import gzip
+import subprocess
+import tempfile
+import shutil
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import markdown
@@ -54,6 +57,8 @@ STORAGE_BUCKET = "covers"
 CONTENT_STORAGE_BUCKET = "chapter-content"
 DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&q=80"
 UPLOADABLE_DIR_SUFFIX = "_Translated"
+COVER_CACHE_CONTROL = "86400"
+CHAPTER_CACHE_CONTROL = "86400"
 
 
 # ─────────────────────────────────────────
@@ -63,6 +68,130 @@ UPLOADABLE_DIR_SUFFIX = "_Translated"
 def safe_storage_name(value: str) -> str:
     safe_name = re.sub(r"[^a-zA-Z0-9_]+", "_", value).strip("_").lower()
     return safe_name[:80] or "chapter"
+
+
+def get_image_converter() -> str | None:
+    return shutil.which("magick") or shutil.which("convert")
+
+
+def find_cover_source(translated_dir: str) -> str | None:
+    for filename in ("theme.webp", "theme.jpg", "theme.jpeg", "theme.png"):
+        path = os.path.join(translated_dir, filename)
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def wrap_cover_text(text: str, max_chars: int = 12, max_lines: int = 5) -> str:
+    words = text.split()
+    if not words:
+        return "Chưa đặt tên"
+
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        next_line = f"{current} {word}".strip()
+        if current and len(next_line) > max_chars:
+            lines.append(current)
+            current = word
+        else:
+            current = next_line
+
+    if current:
+        lines.append(current)
+
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(".") + "..."
+
+    return "\n".join(lines)
+
+
+def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str] | None:
+    converter = get_image_converter()
+    if not converter:
+        return None
+
+    title_text = wrap_cover_text(book_title)
+    title_lines = title_text.count("\n") + 1
+    title_size = 42 if title_lines <= 2 else 36 if title_lines <= 4 else 31
+    author_text = f"Tác giả: {author or 'Chưa rõ'}"
+
+    temp = tempfile.NamedTemporaryFile(suffix=".webp", delete=False)
+    temp.close()
+    command = [
+        converter,
+        "-size", "420x630",
+        "gradient:#fffdf8-#eadbc4",
+        "-fill", "#efe4d2",
+        "-draw", "rectangle 24,24 396,606",
+        "-fill", "#fbf7ef",
+        "-draw", "rectangle 34,34 386,596",
+        "-fill", "#c8a96a",
+        "-draw", "line 92,124 328,124 line 92,506 328,506",
+        "-font", "DejaVu-Serif-Bold",
+        "-fill", "#24201d",
+        "-pointsize", str(title_size),
+        "-gravity", "center",
+        "-annotate", "+0-42", title_text,
+        "-font", "DejaVu-Serif",
+        "-fill", "#6b5740",
+        "-pointsize", "20",
+        "-annotate", "+0+172", author_text,
+        "-font", "DejaVu-Serif",
+        "-fill", "#a37b34",
+        "-pointsize", "18",
+        "-annotate", "+0+238", "Tiên Hiệp Lâu",
+        "-strip",
+        "-quality", "72",
+        "-define", "webp:method=6",
+        temp.name,
+    ]
+
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.getsize(temp.name) <= 0:
+            raise ValueError("generated cover is empty")
+        return temp.name, "image/webp", ".webp"
+    except Exception:
+        try:
+            os.unlink(temp.name)
+        except OSError:
+            pass
+        return None
+
+
+def create_optimized_cover(source_path: str) -> tuple[str, str, str] | None:
+    converter = get_image_converter()
+    if not converter:
+        return None
+
+    temp = tempfile.NamedTemporaryFile(suffix=".webp", delete=False)
+    temp.close()
+    command = [
+        converter,
+        source_path,
+        "-auto-orient",
+        "-resize",
+        "420x630>",
+        "-strip",
+        "-quality",
+        "72",
+        "-define",
+        "webp:method=6",
+        temp.name,
+    ]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.getsize(temp.name) <= 0:
+            raise ValueError("optimized cover is empty")
+        return temp.name, "image/webp", ".webp"
+    except Exception:
+        try:
+            os.unlink(temp.name)
+        except OSError:
+            pass
+        return None
 
 
 def parse_optional_int(value: str, field_name: str) -> int | None:
@@ -110,25 +239,57 @@ def read_book_info(translated_dir: str) -> dict:
     return book_info
 
 
-def upload_cover(translated_dir: str, book_title: str) -> str:
-    theme_path = os.path.join(translated_dir, "theme.png")
-    if not os.path.exists(theme_path):
+def upload_cover(translated_dir: str, book_title: str, author: str = "Chưa rõ") -> str:
+    theme_path = find_cover_source(translated_dir)
+    safe_stem = re.sub(r"[^a-zA-Z0-9_]", "_", book_title).lower()
+    optimized_cover = None
+    generated_cover = None
+    upload_path = theme_path
+    content_type = "image/png"
+    extension = ".png"
+
+    if theme_path:
+        optimized_cover = create_optimized_cover(theme_path)
+    else:
+        generated_cover = create_generated_cover(book_title, author)
+        if generated_cover:
+            local_cover_path = os.path.join(translated_dir, "theme.webp")
+            shutil.copyfile(generated_cover[0], local_cover_path)
+            print(f"🖼️  Đã tạo ảnh bìa local: {local_cover_path}")
+
+    if optimized_cover:
+        upload_path, content_type, extension = optimized_cover
+    elif generated_cover:
+        upload_path, content_type, extension = generated_cover
+    elif not upload_path:
         return DEFAULT_COVER
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", book_title).lower() + ".png"
+
+    safe_name = safe_stem + extension
     try:
-        with open(theme_path, "rb") as f:
+        with open(upload_path, "rb") as f:
             image_bytes = f.read()
         try:
-            supabase.storage.from_(STORAGE_BUCKET).remove([safe_name])
+            supabase.storage.from_(STORAGE_BUCKET).remove([
+                safe_stem + ".png",
+                safe_stem + ".jpg",
+                safe_stem + ".jpeg",
+                safe_stem + ".webp",
+            ])
         except Exception:
             pass
         supabase.storage.from_(STORAGE_BUCKET).upload(
-            safe_name, image_bytes, {"content-type": "image/png"}
+            safe_name, image_bytes, {"content-type": content_type, "cache-control": COVER_CACHE_CONTROL}
         )
         return supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
     except Exception as e:
         print(f"⚠️  Lỗi upload ảnh: {e}")
         return DEFAULT_COVER
+    finally:
+        if optimized_cover or generated_cover:
+            try:
+                os.unlink(upload_path)
+            except OSError:
+                pass
 
 
 def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str, html_content: str) -> tuple[str, str]:
@@ -147,7 +308,7 @@ def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str
             compressed_html,
             {
                 "content-type": "application/gzip",
-                "cache-control": "3600"
+                "cache-control": CHAPTER_CACHE_CONTROL
             }
         )
         return content_path, supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
@@ -423,7 +584,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
         book_id = book["id"]
     else:
         # Tạo mới
-        cover_url = upload_cover(translated_dir, title)
+        cover_url = upload_cover(translated_dir, title, book_info["author"])
         insert_data = {
             "title": title,
             "author": book_info["author"],
@@ -441,7 +602,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
         print(f"✅ Đã tạo truyện mới (ID={book_id})")
 
     # Upload lại
-    cover_url = upload_cover(translated_dir, title)
+    cover_url = upload_cover(translated_dir, title, book_info["author"])
     update_data = {
         "cover_url": cover_url,
         "author": book_info["author"],

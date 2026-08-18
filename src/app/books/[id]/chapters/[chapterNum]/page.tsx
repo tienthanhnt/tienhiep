@@ -6,6 +6,7 @@ import { buildChapterDescription, getCleanChapterTitle, getSiteUrl, SITE_NAME } 
 
 export const revalidate = 900;
 export const runtime = 'nodejs';
+const CHAPTER_CONTENT_REVALIDATE_SECONDS = 86400;
 
 interface Chapter {
   id: number;
@@ -28,7 +29,7 @@ async function fetchChapterContent(chapter: Chapter) {
   if (!chapter.content_url) return "";
 
   const resContent = await fetch(chapter.content_url, {
-    next: { revalidate: 3600 },
+    next: { revalidate: CHAPTER_CONTENT_REVALIDATE_SECONDS },
   });
   if (!resContent.ok) return "";
 

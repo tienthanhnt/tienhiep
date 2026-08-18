@@ -2,7 +2,7 @@
 
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -35,7 +35,6 @@ export default function ChapterReader({
   nextNum,
   chapterCount,
 }: ChapterReaderProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const [fontSize, setFontSize] = useState<number>(19); // Default 19px for super comfortable reading
   const [theme, setTheme] = useState<'parchment' | 'dark' | 'white'>('parchment');
@@ -75,11 +74,6 @@ export default function ChapterReader({
       String(chapter.chapter_number).includes(keyword)
     ));
   }, [currentTocChapters, tocQuery, tocSearchResults]);
-
-  useEffect(() => {
-    if (prevHref) router.prefetch(prevHref);
-    if (nextHref) router.prefetch(nextHref);
-  }, [nextHref, prevHref, router]);
 
   useEffect(() => {
     const viewKey = `${bookId}:${chapterNumber}`;
@@ -289,9 +283,7 @@ export default function ChapterReader({
     return (
       <Link
         href={href}
-        prefetch
-        onMouseEnter={() => router.prefetch(href)}
-        onTouchStart={() => router.prefetch(href)}
+        prefetch={false}
         onClick={() => setLoadingChapter(targetChapter)}
         aria-busy={isLoading}
         className={`px-4 py-2 rounded-md text-[#5C5449] transition-all border border-[#C69C4E]/25 min-w-[118px] text-center shadow-sm ${
