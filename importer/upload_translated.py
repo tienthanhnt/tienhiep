@@ -43,6 +43,13 @@ def safe_storage_name(value: str) -> str:
     return safe_name[:80] or "chapter"
 
 
+def safe_ascii_storage_stem(value: str, fallback: str = "cover") -> str:
+    normalized = unicodedata.normalize("NFD", value).replace("Đ", "D").replace("đ", "d")
+    ascii_value = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    safe_name = re.sub(r"[^a-zA-Z0-9_]+", "_", ascii_value).strip("_").lower()
+    return safe_name[:64] or fallback
+
+
 def get_image_converter() -> str | None:
     return shutil.which("magick") or shutil.which("convert")
 
@@ -420,7 +427,6 @@ def upload_cover_image(translated_dir: str, book_title: str, author: str = "Chư
     """Upload ảnh bìa từ thư mục Translated lên Supabase Storage. Trả về public URL."""
     theme_path = find_cover_source(translated_dir)
 
-    safe_stem = re.sub(r"[^a-zA-Z0-9_]", "_", book_title).lower()
     optimized_cover = None
     generated_cover = None
     upload_path = theme_path
@@ -445,27 +451,18 @@ def upload_cover_image(translated_dir: str, book_title: str, author: str = "Chư
         print("⚠️  Không tạo được ảnh bìa tự động — dùng ảnh mặc định.")
         return DEFAULT_COVER
 
-    safe_name = safe_stem + extension
-
     try:
         with open(upload_path, "rb") as f:
             image_bytes = f.read()
-        try:
-            supabase.storage.from_(STORAGE_BUCKET).remove([
-                safe_stem + ".png",
-                safe_stem + ".jpg",
-                safe_stem + ".jpeg",
-                safe_stem + ".webp",
-            ])
-        except Exception:
-            pass
+        safe_stem = safe_ascii_storage_stem(book_title)
+        content_hash = hashlib.sha1(image_bytes).hexdigest()[:12]
+        safe_name = f"{safe_stem}-{content_hash}{extension}"
         supabase.storage.from_(STORAGE_BUCKET).upload(
             safe_name,
             image_bytes,
-            {"content-type": content_type, "cache-control": COVER_CACHE_CONTROL}
+            {"content-type": content_type, "cache-control": COVER_CACHE_CONTROL, "upsert": "true"}
         )
         public_url = supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
-        public_url = f"{public_url}?v={hashlib.sha1(image_bytes).hexdigest()[:12]}"
         print(f"🖼️  Đã upload ảnh bìa WebP tối ưu: {public_url}")
         return public_url
     except Exception as e:
