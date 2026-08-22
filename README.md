@@ -43,6 +43,8 @@ description=Xích Tâm Tuần Thiên là truyện tiên hiệp kể về hành t
 > `description=`, `genres=` và `source_type=` là metadata SEO tùy chọn. Nên viết `description` ngắn gọn khoảng 1-2 câu, không nhồi từ khóa.
 >
 > `ranking=` là thứ tự ưu tiên ngoài trang chủ. Số càng nhỏ càng hiện trước. Bỏ trống thì tự xếp sau các truyện có ranking và theo `id`.
+>
+> Nếu cần đổi cả `title=` của truyện đã upload, thêm `old_title=Tên hiện tại trên web` hoặc `book_id=ID truyện` vào `book_info.txt` rồi chạy `--info-only`.
 
 ---
 
@@ -210,6 +212,12 @@ python upload_translated.py --covers-only
 
 # Chỉ tối ưu/upload lại ảnh bìa của 1 truyện
 python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated --covers-only
+
+# Chỉ đồng bộ lại book_info.txt, không upload chương/ảnh
+python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated --info-only
+
+# Đồng bộ lại book_info.txt cho tất cả thư mục *_Translated
+python upload_translated.py --scan-dir chapters --info-only
 ```
 > ✅ Script tự động bỏ qua chương đã tồn tại — chạy nhiều lần không bị trùng.
 >

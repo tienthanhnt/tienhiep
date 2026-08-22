@@ -33,6 +33,7 @@ export default function BookCard({ id, title, author, chapterCount, status, cove
           src={coverUrl}
           alt={title}
           fill
+          unoptimized
           sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 22vw, 180px"
           className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-[1.025]"
         />

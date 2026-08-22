@@ -186,6 +186,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
           alt={book.title}
           width={176}
           height={256}
+          unoptimized
           sizes="176px"
           className="w-44 h-64 object-cover rounded-md border border-[#D8CDBB] self-center md:self-start shrink-0 shadow-[0_10px_22px_rgba(66,52,35,0.13)]"
         />

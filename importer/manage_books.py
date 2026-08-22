@@ -38,6 +38,8 @@ import gzip
 import subprocess
 import tempfile
 import shutil
+import unicodedata
+import hashlib
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import markdown
@@ -76,6 +78,47 @@ def get_image_converter() -> str | None:
     return shutil.which("magick") or shutil.which("convert")
 
 
+def find_cover_font(candidates: list[str], fallback: str) -> str:
+    converter = get_image_converter()
+    if converter:
+        try:
+            result = subprocess.run(
+                [converter, "-list", "font"],
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+            available_fonts = set(re.findall(r"^\s*Font:\s*(.+)$", result.stdout, flags=re.MULTILINE))
+            for candidate in candidates:
+                if candidate in available_fonts:
+                    return candidate
+        except Exception:
+            pass
+
+    fc_match = shutil.which("fc-match")
+    if not fc_match:
+        return fallback
+
+    for candidate in candidates:
+        try:
+            result = subprocess.run(
+                [fc_match, "-f", "%{family}", candidate],
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            continue
+
+        family = result.stdout.split(",")[0].strip()
+        if family and candidate.lower().split()[0] in family.lower():
+            return family
+
+    return fallback
+
+
 def find_cover_source(translated_dir: str) -> str | None:
     for filename in ("theme.webp", "theme.jpg", "theme.jpeg", "theme.png"):
         path = os.path.join(translated_dir, filename)
@@ -109,41 +152,238 @@ def wrap_cover_text(text: str, max_chars: int = 12, max_lines: int = 5) -> str:
     return "\n".join(lines)
 
 
+def clean_cover_display_title(value: str) -> str:
+    value = re.sub(r"[_-]+", " ", value or "")
+    value = re.sub(r"\b\d+\s+\d+\b$", "", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value or "Chưa đặt tên"
+
+
+def normalize_cover_keyword(value: str) -> str:
+    value = unicodedata.normalize("NFD", value or "")
+    value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
+    value = value.replace("đ", "d").replace("Đ", "D").lower()
+    return re.sub(r"[^a-z0-9]+", " ", value)
+
+
+def cover_motif_args(book_title: str) -> list[str]:
+    keyword = normalize_cover_keyword(book_title)
+
+    if "dau la" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "3",
+            "-draw", "circle 160,290 160,258 circle 160,290 160,236 circle 160,290 160,214",
+            "-stroke", "#3b5f86",
+            "-strokewidth", "2",
+            "-draw", "circle 160,290 128,290 circle 160,290 192,290",
+        ]
+
+    if "ban long" in keyword or "long" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#2f4d3b",
+            "-strokewidth", "5",
+            "-draw", "path 'M 74 318 C 112 240, 206 354, 244 260 C 258 226, 228 204, 198 220'",
+            "-stroke", "#8d6f2f",
+            "-strokewidth", "3",
+            "-draw", "path 'M 194 220 L 220 202 M 198 220 L 228 224 M 102 288 L 82 270 M 142 306 L 128 330 M 190 292 L 214 312'",
+        ]
+
+    if "tap do" in keyword:
+        return [
+            "-fill", "#efe4cf",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "2",
+            "-draw", "rectangle 88,248 150,338 rectangle 136,226 198,316 rectangle 174,252 236,342",
+            "-fill", "none",
+            "-stroke", "#b99654",
+            "-strokewidth", "1",
+            "-draw", "line 104,270 134,270 line 152,248 182,248 line 190,274 220,274",
+        ]
+
+    if "the ton" in keyword or "than" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#7b6a4d",
+            "-strokewidth", "3",
+            "-draw", "circle 160,250 160,230 path 'M 160 270 C 136 286, 126 306, 118 332 M 160 270 C 184 286, 194 306, 202 332 M 130 334 L 190 334'",
+            "-stroke", "#b99654",
+            "-strokewidth", "2",
+            "-draw", "circle 160,286 160,214",
+        ]
+
+    if "ngu linh" in keyword or "linh" in keyword:
+        return [
+            "-fill", "#d8eadf",
+            "-stroke", "#789b83",
+            "-strokewidth", "2",
+            "-draw", "circle 160,270 160,226 circle 116,310 116,288 circle 204,310 204,288",
+            "-fill", "none",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "2",
+            "-draw", "path 'M 160 314 C 138 294, 142 270, 160 250 C 178 270, 182 294, 160 314'",
+        ]
+
+    if "kiem" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#3f4b55",
+            "-strokewidth", "4",
+            "-draw", "line 160,222 160,352",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "3",
+            "-draw", "line 126,272 194,272 line 148,352 172,352",
+            "-fill", "#3f4b55",
+            "-draw", "polygon 160,204 148,226 172,226",
+        ]
+
+    if "su phu" in keyword or "mat tich" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "3",
+            "-draw", "line 96,332 224,332 line 116,332 116,258 line 204,332 204,258 line 104,258 216,258",
+            "-stroke", "#7a8d8f",
+            "-strokewidth", "2",
+            "-draw", "path 'M 78 232 C 110 210, 134 226, 158 212 C 186 196, 212 216, 238 204'",
+        ]
+
+    if "tran duyen" in keyword or "duyen" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#a05d4d",
+            "-strokewidth", "3",
+            "-draw", "path 'M 78 310 C 122 252, 198 366, 242 282'",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "2",
+            "-draw", "circle 100,302 100,292 circle 220,286 220,276",
+        ]
+
+    if "cam y" in keyword or "da hanh" in keyword:
+        return [
+            "-fill", "#d8c99f",
+            "-stroke", "none",
+            "-draw", "circle 224,226 224,190",
+            "-fill", "#fbf3df",
+            "-draw", "circle 240,218 240,182",
+            "-fill", "none",
+            "-stroke", "#2f3138",
+            "-strokewidth", "3",
+            "-draw", "path 'M 108 350 C 136 286, 184 286, 212 350 M 132 350 L 188 350 M 160 286 L 160 350'",
+        ]
+
+    if "ngu dao" in keyword or "dao" in keyword:
+        return [
+            "-fill", "none",
+            "-stroke", "#8a6a28",
+            "-strokewidth", "4",
+            "-draw", "path 'M 92 354 C 130 314, 128 276, 160 242 C 192 276, 190 314, 228 354'",
+            "-stroke", "#697d68",
+            "-strokewidth", "2",
+            "-draw", "line 92,354 228,354 line 118,324 202,324 line 140,292 180,292",
+        ]
+
+    return [
+        "-fill", "none",
+        "-stroke", "#8a6a28",
+        "-strokewidth", "2",
+        "-draw", "path 'M 90 330 C 124 286, 138 260, 160 226 C 182 260, 196 286, 230 330 M 106 330 L 214 330'",
+    ]
+
+
 def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str] | None:
     converter = get_image_converter()
     if not converter:
         return None
 
-    title_text = wrap_cover_text(book_title)
+    display_title = clean_cover_display_title(book_title)
+    title_text = wrap_cover_text(display_title, max_chars=10)
     title_lines = title_text.count("\n") + 1
-    title_size = 42 if title_lines <= 2 else 36 if title_lines <= 4 else 31
+    title_size = 39 if title_lines <= 2 else 34 if title_lines <= 4 else 29
     author_text = f"Tác giả: {author or 'Chưa rõ'}"
+    title_font = find_cover_font(
+        [
+            "Noto-Serif-CJK-SC-Bold",
+            "Noto-Serif-CJK-TC-Bold",
+            "Noto-Serif-CJK-JP-Bold",
+            "Noto Serif CJK SC",
+            "Noto Serif CJK TC",
+            "Source Han Serif SC",
+            "Source Han Serif CN",
+            "SimSun",
+            "KaiTi",
+        ],
+        "DejaVu-Serif-Bold",
+    )
+    detail_font = find_cover_font(
+        [
+            "Noto-Serif-CJK-SC",
+            "Noto-Serif-CJK-TC",
+            "Noto Serif CJK SC",
+            "Noto Serif CJK TC",
+            "Noto Serif",
+            "Source Han Serif SC",
+            "DejaVu Serif",
+        ],
+        "DejaVu-Serif",
+    )
 
     temp = tempfile.NamedTemporaryFile(suffix=".webp", delete=False)
     temp.close()
     command = [
         converter,
         "-size", COVER_SIZE,
-        "gradient:#fffdf8-#eadbc4",
-        "-fill", "#efe4d2",
-        "-draw", "rectangle 18,18 302,462",
-        "-fill", "#fbf7ef",
-        "-draw", "rectangle 26,26 294,454",
-        "-fill", "#c8a96a",
-        "-draw", "line 70,94 250,94 line 70,386 250,386",
-        "-font", "DejaVu-Serif-Bold",
-        "-fill", "#24201d",
+        "gradient:#fbf6ea-#dcc18c",
+        "-fill", "#ead7af",
+        "-draw", "rectangle 16,16 304,464",
+        "-fill", "#fbf2df",
+        "-draw", "rectangle 24,24 296,456",
+        "-fill", "#d8bd86",
+        "-draw", "line 54,72 266,72 line 54,404 266,404",
+        "-fill", "#8a857b2f",
+        "-stroke", "none",
+        "-draw", "path 'M 16 374 C 42 326, 66 300, 92 374 Z' path 'M 82 380 C 114 308, 150 264, 190 380 Z' path 'M 182 378 C 222 318, 258 300, 316 378 Z'",
+        "-fill", "#37342f36",
+        "-draw", "path 'M 0 420 C 46 350, 84 310, 138 420 Z' path 'M 172 420 C 218 354, 266 304, 320 420 Z'",
+        "-fill", "none",
+        "-stroke", "#7f766644",
+        "-strokewidth", "2",
+        "-draw", "path 'M 20 338 C 76 310, 126 340, 184 310 C 232 286, 266 314, 310 292' path 'M 26 394 C 88 372, 142 392, 206 368 C 254 350, 286 360, 316 348'",
+        "-stroke", "#bfa56b55",
+        "-strokewidth", "1",
+        "-draw", "path 'M 54 118 C 96 100, 122 122, 164 104 C 204 86, 238 102, 272 92'",
+        *cover_motif_args(display_title),
+        "-fill", "#fbf3dfcc",
+        "-stroke", "#cfb06d77",
+        "-strokewidth", "1",
+        "-draw", "roundrectangle 28,82 292,266 12,12",
+        "-fill", "#fbf3dfee",
+        "-stroke", "#cfb06d55",
+        "-draw", "roundrectangle 34,340 286,383 8,8",
+        "-font", title_font,
+        "-stroke", "#efe1c6",
+        "-strokewidth", "1",
+        "-fill", "#201912",
         "-pointsize", str(title_size),
         "-gravity", "center",
-        "-annotate", "+0-32", title_text,
-        "-font", "DejaVu-Serif",
-        "-fill", "#6b5740",
+        "-annotate", "+0-52", title_text,
+        "-stroke", "none",
+        "-font", detail_font,
+        "-fill", "#6a4f2e",
         "-pointsize", "20",
-        "-annotate", "+0+132", author_text,
-        "-font", "DejaVu-Serif",
-        "-fill", "#a37b34",
-        "-pointsize", "18",
-        "-annotate", "+0+182", "Tiên Hiệp Lâu",
+        "-annotate", "+0+122", author_text,
+        "-font", detail_font,
+        "-gravity", "southeast",
+        "-fill", "#f8eedbc2",
+        "-stroke", "#8f672c66",
+        "-strokewidth", "1",
+        "-draw", "roundrectangle 214,444 310,470 6,6",
+        "-stroke", "none",
+        "-fill", "#6f512eaa",
+        "-pointsize", "12",
+        "-annotate", "+16+16", "Tiên Hiệp Lâu",
         "-strip",
         "-quality", COVER_QUALITY,
         "-define", "webp:method=6",
@@ -282,7 +522,8 @@ def upload_cover(translated_dir: str, book_title: str, author: str = "Chưa rõ"
         supabase.storage.from_(STORAGE_BUCKET).upload(
             safe_name, image_bytes, {"content-type": content_type, "cache-control": COVER_CACHE_CONTROL}
         )
-        return supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
+        public_url = supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
+        return f"{public_url}?v={hashlib.sha1(image_bytes).hexdigest()[:12]}"
     except Exception as e:
         print(f"⚠️  Lỗi upload ảnh: {e}")
         return DEFAULT_COVER
