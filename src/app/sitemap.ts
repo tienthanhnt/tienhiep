@@ -2,15 +2,10 @@ import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/seo";
 
 export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 interface SitemapBook {
   id: number;
-  created_at?: string | null;
-}
-
-interface SitemapChapter {
-  book_id: number;
-  chapter_number: number;
   created_at?: string | null;
 }
 
@@ -48,10 +43,7 @@ async function fetchAllFromSupabase<T>(path: string) {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
-  const [books, chapters] = await Promise.all([
-    fetchAllFromSupabase<SitemapBook>("books?select=id,created_at&order=created_at.desc"),
-    fetchAllFromSupabase<SitemapChapter>("chapters?select=book_id,chapter_number,created_at&order=book_id.asc,chapter_number.asc"),
-  ]);
+  const books = await fetchAllFromSupabase<SitemapBook>("books?select=id,created_at&order=ranking.asc.nullslast,id.asc");
 
   return [
     {
@@ -65,12 +57,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: book.created_at ? new Date(book.created_at) : new Date(),
       changeFrequency: "daily" as const,
       priority: 0.8,
-    })),
-    ...chapters.map((chapter) => ({
-      url: `${siteUrl}/books/${chapter.book_id}/chapters/${chapter.chapter_number}`,
-      lastModified: chapter.created_at ? new Date(chapter.created_at) : new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
     })),
   ];
 }

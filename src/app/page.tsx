@@ -4,6 +4,7 @@ import { formatCompactNumber } from "@/lib/format";
 import { redirect } from "next/navigation";
 
 export const revalidate = 600;
+export const dynamic = "force-dynamic";
 const BOOKS_PER_PAGE = 20;
 
 const MOCK_BOOKS = [
