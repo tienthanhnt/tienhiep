@@ -294,6 +294,57 @@ python upload_translated.py --translated-dir chapters/Ten_Truyen_Translated
 
 ---
 
+### 🛒 Quảng Cáo Affiliate Shopee
+
+Website đang hỗ trợ quảng cáo affiliate dạng nhẹ, không dùng ảnh sản phẩm để giảm egress/storage.
+Block quảng cáo sẽ xuất hiện ở:
+
+- Cuối trang chủ, dưới danh sách truyện.
+- Cuối nội dung chương, trước nút chuyển chương.
+
+Danh sách sản phẩm nằm trong file:
+
+```text
+src/config/affiliateAds.ts
+```
+
+Thêm hoặc đổi link Shopee affiliate bằng cách sửa trường `href`:
+
+```ts
+export const affiliateProducts = [
+  {
+    name: "Máy đọc sách Kindle",
+    description: "Màn hình dễ chịu hơn khi đọc lâu.",
+    href: "https://s.shopee.vn/link-affiliate-kindle",
+  },
+  {
+    name: "Đèn đọc sách",
+    description: "Ánh sáng dịu, hợp đọc buổi tối.",
+    href: "https://s.shopee.vn/link-affiliate-den-doc-sach",
+  },
+  {
+    name: "Dán chống ánh sáng xanh",
+    description: "Giảm chói khi đọc trên điện thoại.",
+    href: "https://s.shopee.vn/link-affiliate-dan-man-hinh",
+  },
+];
+```
+
+Lưu ý:
+
+- Sản phẩm có `href: ""` sẽ tự ẩn, không hiện trên web.
+- Muốn thêm sản phẩm mới, chỉ cần thêm một object mới vào `affiliateProducts`.
+- Không cần thêm biến môi trường trên Vercel.
+- Sau khi sửa link, commit và push code để Vercel deploy lại.
+
+```bash
+git add src/config/affiliateAds.ts
+git commit -m "Update affiliate ad links"
+git push
+```
+
+---
+
 ### 📌 Bảng Tóm Tắt Nhanh
 
 | Mục đích | Lệnh |
@@ -733,21 +784,22 @@ Nếu một file lỗi, importer tiếp tục với các file khác và ghi lỗ
 
 ## 11. Quảng cáo
 
-MVP chưa tải script quảng cáo. Giao diện chỉ chuẩn bị component `AdSlot` với các vị trí:
+Website dùng quảng cáo affiliate dạng text-only qua component `AdSlot`, không tải script quảng cáo ngoài và không dùng ảnh sản phẩm.
+Danh sách sản phẩm được cấu hình trong `src/config/affiliateAds.ts`.
 
-- `home-between-sections`: giữa Mới cập nhật và Truyện hoàn thành.
-- `listing-inline`: sau một số hàng trong trang danh sách.
-- `book-detail`: giữa giới thiệu và danh sách chương.
-- `reader-top`: phía trên nội dung chương.
-- `reader-bottom`: sau nội dung chương.
+Vị trí hiện tại:
+
+- Trang chủ: dưới danh sách truyện.
+- Trang đọc chương: sau nội dung chương, trước nút chuyển chương.
 
 Nguyên tắc:
 
-- Quảng cáo tắt mặc định bằng biến môi trường.
+- Sản phẩm không có link affiliate sẽ tự ẩn.
 - Không đặt quảng cáo chen giữa từng đoạn văn.
 - Không che nút chuyển chương.
-- Khung quảng cáo dành sẵn kích thước để tránh layout nhảy khi tải.
-- Có thể đổi nhà cung cấp quảng cáo mà không sửa layout các trang.
+- Không dùng ảnh sản phẩm để tránh tăng egress/storage.
+- Link affiliate dùng `rel="nofollow sponsored noopener noreferrer"`.
+- Có nhãn `Liên kết giới thiệu` để minh bạch với người đọc.
 
 ## 12. SEO
 

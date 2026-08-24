@@ -1,5 +1,6 @@
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
+import AdSlot from "@/components/AdSlot";
 import { formatCompactNumber } from "@/lib/format";
 import { redirect } from "next/navigation";
 
@@ -173,6 +174,8 @@ export default async function Home({
         totalCount={totalCount || books.length}
         pageSize={BOOKS_PER_PAGE}
       />
+
+      <AdSlot placement="home" />
 
       <div className="self-center rounded border border-[#E8E0D2] px-2.5 py-1 text-[11px] text-[#A09688]">
         Tổng lượt đọc: {formatCompactNumber(totalViewCount)}

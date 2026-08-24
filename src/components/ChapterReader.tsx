@@ -3,6 +3,7 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import AdSlot from './AdSlot';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -533,6 +534,8 @@ export default function ChapterReader({
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
       </div>
+
+      <AdSlot placement="chapter" />
 
       {/* Navigation Buttons Bottom */}
       <div className="flex justify-between items-center text-xs font-semibold mt-4">
