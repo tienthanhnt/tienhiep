@@ -202,9 +202,20 @@ def extract_chapter_sections(soup: BeautifulSoup, fallback_title: str):
 
     for node in soup.find_all(list(heading_names) + ['p']):
         if node.name in heading_names:
+            heading_text = node.get_text(" ", strip=True) or fallback_title
+
+            if current_title and not current_paragraphs:
+                if is_output_chapter_title(current_title) and not is_output_chapter_title(heading_text):
+                    current_title = f"{current_title}: {heading_text}"
+                    continue
+
+                if not is_output_chapter_title(current_title) and is_output_chapter_title(heading_text):
+                    current_title = heading_text
+                    continue
+
             if current_title and current_paragraphs:
                 sections.append((current_title, current_paragraphs))
-            current_title = node.get_text(" ", strip=True) or fallback_title
+            current_title = heading_text
             current_paragraphs = []
             continue
 

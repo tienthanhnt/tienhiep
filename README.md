@@ -222,8 +222,20 @@ python upload_translated.py --scan-dir chapters --info-only
 > ✅ Script tự động bỏ qua chương đã tồn tại — chạy nhiều lần không bị trùng.
 >
 > 🖼️ Nếu máy có ImageMagick (`convert` hoặc `magick`), ảnh bìa `theme.webp/theme.jpg/theme.jpeg/theme.png` sẽ được resize/nén và upload thành `.webp` nhẹ hơn để giảm Supabase Storage egress.
-> Mặc định ảnh upload được tối ưu về tối đa `320x480`, WebP quality `66`.
+> Mặc định ảnh upload được tối ưu về tối đa `240x360`, WebP quality `46` để giảm Supabase Storage/egress nhưng vẫn giữ tỉ lệ bìa 2:3.
 > Nếu thư mục truyện chưa có ảnh bìa, script sẽ tự tạo `theme.webp` rất nhẹ từ `title=` và `author=` trong `book_info.txt`.
+
+Sau khi chạy `--covers-only` nhiều lần, bucket `covers` có thể còn ảnh bìa cũ không còn được bảng `books.cover_url` dùng nữa. Có thể dọn bằng:
+
+```bash
+# Chỉ kiểm tra, chưa xóa gì
+python cleanup_orphan_covers.py
+
+# Xóa thật các cover cũ không còn được DB dùng
+python cleanup_orphan_covers.py --delete --yes
+```
+
+> ✅ Tool dọn cover mặc định là dry-run. Chỉ xóa file trong bucket `covers` khi dùng đủ `--delete --yes`.
 
 ---
 
@@ -313,16 +325,19 @@ Thêm hoặc đổi link Shopee affiliate bằng cách sửa trường `href`:
 ```ts
 export const affiliateProducts = [
   {
+    id: "kindle",
     name: "Máy đọc sách Kindle",
     description: "Màn hình dễ chịu hơn khi đọc lâu.",
     href: "https://s.shopee.vn/link-affiliate-kindle",
   },
   {
+    id: "reading-light",
     name: "Đèn đọc sách",
     description: "Ánh sáng dịu, hợp đọc buổi tối.",
     href: "https://s.shopee.vn/link-affiliate-den-doc-sach",
   },
   {
+    id: "blue-light-screen-protector",
     name: "Dán chống ánh sáng xanh",
     description: "Giảm chói khi đọc trên điện thoại.",
     href: "https://s.shopee.vn/link-affiliate-dan-man-hinh",
@@ -336,11 +351,39 @@ Lưu ý:
 - Muốn thêm sản phẩm mới, chỉ cần thêm một object mới vào `affiliateProducts`.
 - Không cần thêm biến môi trường trên Vercel.
 - Sau khi sửa link, commit và push code để Vercel deploy lại.
+- Mỗi sản phẩm cần có `id` riêng, chỉ dùng chữ thường/số/dấu gạch ngang, ví dụ `kindle`.
 
 ```bash
 git add src/config/affiliateAds.ts
 git commit -m "Update affiliate ad links"
 git push
+```
+
+Nếu muốn đếm lượt bấm quảng cáo, chạy SQL một lần trong Supabase SQL Editor:
+
+```sql
+-- Hoặc mở file supabase_affiliate_clicks.sql và copy toàn bộ nội dung
+CREATE TABLE IF NOT EXISTS affiliate_ad_clicks (
+  ad_id TEXT PRIMARY KEY,
+  click_count BIGINT NOT NULL DEFAULT 0,
+  home_click_count BIGINT NOT NULL DEFAULT 0,
+  chapter_click_count BIGINT NOT NULL DEFAULT 0,
+  last_clicked_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+Khuyến nghị dùng file đầy đủ:
+
+```text
+supabase_affiliate_clicks.sql
+```
+
+Xem thống kê click:
+
+```sql
+SELECT *
+FROM affiliate_ad_clicks
+ORDER BY click_count DESC;
 ```
 
 ---

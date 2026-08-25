@@ -61,8 +61,9 @@ DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=
 UPLOADABLE_DIR_SUFFIX = "_Translated"
 COVER_CACHE_CONTROL = "86400"
 CHAPTER_CACHE_CONTROL = "86400"
-COVER_SIZE = "320x480"
-COVER_QUALITY = "66"
+COVER_CANVAS_SIZE = "320x480"
+COVER_SIZE = "240x360"
+COVER_QUALITY = "46"
 
 
 # ─────────────────────────────────────────
@@ -334,7 +335,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
     temp.close()
     command = [
         converter,
-        "-size", COVER_SIZE,
+        "-size", COVER_CANVAS_SIZE,
         "gradient:#fbf6ea-#dcc18c",
         "-fill", "#ead7af",
         "-draw", "rectangle 16,16 304,464",
@@ -384,6 +385,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         "-fill", "#6f512eaa",
         "-pointsize", "12",
         "-annotate", "+16+16", "Tiên Hiệp Lâu",
+        "-resize", f"{COVER_SIZE}>",
         "-strip",
         "-quality", COVER_QUALITY,
         "-define", "webp:method=6",
@@ -693,6 +695,57 @@ def cmd_delete_book(title: str, confirm: bool = False):
     print(f"🗑️  Đã xóa truyện '{book['title']}' và toàn bộ chương.")
 
 
+def cmd_delete_books_under_chapters(max_chapters: int, confirm: bool = False, skip_storage: bool = False):
+    """Xóa tất cả truyện có chapter_count nhỏ hơn ngưỡng chỉ định."""
+    if max_chapters < 1:
+        print("❌ Ngưỡng số chương phải lớn hơn 0.")
+        return
+
+    res = supabase.table("books") \
+        .select("id, title, author, chapter_count") \
+        .lt("chapter_count", max_chapters) \
+        .order("chapter_count") \
+        .order("id") \
+        .execute()
+    books = res.data or []
+
+    if not books:
+        print(f"✅ Không có truyện nào dưới {max_chapters} chương.")
+        return
+
+    print(f"\n⚠️  Tìm thấy {len(books)} truyện dưới {max_chapters} chương:")
+    print(f"{'ID':<6} {'Chương':<8} {'Tên Truyện':<45} {'Tác Giả'}")
+    print("─" * 95)
+    for book in books:
+        print(
+            f"{book['id']:<6} "
+            f"{(book.get('chapter_count') or 0):<8} "
+            f"{book['title']:<45} "
+            f"{book.get('author') or 'Chưa rõ'}"
+        )
+
+    if not confirm:
+        print("\n🔎 Đây mới là preview, chưa xóa gì.")
+        print(f"   Muốn xóa thật, chạy: python manage_books.py delete-books-under-chapters {max_chapters} --yes")
+        print(f"   Nếu Storage bị chậm/kẹt, chạy: python manage_books.py delete-books-under-chapters {max_chapters} --yes --skip-storage")
+        return
+
+    print("\n🚮 Đang xóa...")
+    deleted = 0
+    for book in books:
+        book_id = book["id"]
+        if not skip_storage:
+            delete_book_content_files(book_id)
+        supabase.table("chapters").delete().eq("book_id", book_id).execute()
+        supabase.table("books").delete().eq("id", book_id).execute()
+        deleted += 1
+        print(f"   🗑️  [{book_id}] {book['title']} ({book.get('chapter_count') or 0} chương)")
+
+    print(f"\n✅ Đã xóa {deleted} truyện dưới {max_chapters} chương.")
+    if skip_storage:
+        print("ℹ️  Đã bỏ qua bước xóa file nội dung trên Storage. Có thể dọn orphan Storage sau nếu cần.")
+
+
 def cmd_list_chapters(title: str):
     """Liệt kê danh sách chương của một truyện."""
     book = find_book_by_title(title)
@@ -918,6 +971,15 @@ if __name__ == "__main__":
     p_del.add_argument("title", help="Tên truyện")
     p_del.add_argument("--yes", action="store_true", help="Bỏ qua xác nhận")
 
+    # delete-books-under-chapters
+    p_del_under = subparsers.add_parser(
+        "delete-books-under-chapters",
+        help="Xóa tất cả truyện có số chương nhỏ hơn ngưỡng"
+    )
+    p_del_under.add_argument("max_chapters", type=int, help="Ngưỡng số chương, ví dụ 100")
+    p_del_under.add_argument("--yes", action="store_true", help="Xóa thật, bỏ qua preview")
+    p_del_under.add_argument("--skip-storage", action="store_true", help="Chỉ xóa DB, bỏ qua file chapter-content trên Storage")
+
     # delete-chapters (toàn bộ)
     p_delc = subparsers.add_parser("delete-chapters", help="Xóa toàn bộ chương, giữ info truyện")
     p_delc.add_argument("title", help="Tên truyện")
@@ -943,6 +1005,8 @@ if __name__ == "__main__":
         cmd_delete_chapter(args.title, args.chapters, confirm=args.yes)
     elif args.command == "delete-book":
         cmd_delete_book(args.title, confirm=args.yes)
+    elif args.command == "delete-books-under-chapters":
+        cmd_delete_books_under_chapters(args.max_chapters, confirm=args.yes, skip_storage=args.skip_storage)
     elif args.command == "delete-chapters":
         cmd_delete_chapters(args.title, confirm=args.yes)
     elif args.command == "resync":

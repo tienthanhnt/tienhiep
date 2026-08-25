@@ -4,6 +4,7 @@ import time
 import argparse
 import requests
 import re
+from pathlib import Path
 
 parser = argparse.ArgumentParser(
     description="Biên tập truyện convert bằng Ollama (Local AI) với cơ chế Chunking."
@@ -27,6 +28,12 @@ parser.add_argument(
     nargs="+",
     help="Danh sách tên file cụ thể muốn biên tập",
     default=None
+)
+parser.add_argument(
+    "--start-from",
+    type=int,
+    default=None,
+    help="Chỉ xử lý các file có số thứ tự chương từ giá trị này trở đi, ví dụ 1500",
 )
 parser.add_argument(
     "--chunk-size",
@@ -65,10 +72,20 @@ TARGET_DIR = args.target_dir if args.target_dir else f"{SOURCE_DIR.rstrip('/')}_
 if not os.path.exists(TARGET_DIR):
     os.makedirs(TARGET_DIR)
 
+PROGRESS_DIR = os.path.join(TARGET_DIR, ".translate_progress")
+os.makedirs(PROGRESS_DIR, exist_ok=True)
+
 if args.files:
     files = args.files
 else:
     files = sorted([f for f in os.listdir(SOURCE_DIR) if f.endswith(".md")])
+    if args.start_from is not None:
+        filtered_files = []
+        for filename in files:
+            match = re.match(r"^(\d+)_", filename)
+            if match and int(match.group(1)) >= args.start_from:
+                filtered_files.append(filename)
+        files = filtered_files
     if args.limit:
         files = files[:args.limit]
 
@@ -247,6 +264,31 @@ def validate_edited_text(source: str, edited: str) -> None:
             )
 
 
+def chunk_progress_dir(filename: str) -> str:
+    safe_name = Path(filename).name
+    path = os.path.join(PROGRESS_DIR, safe_name)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def chunk_progress_path(filename: str, chunk_index: int) -> str:
+    return os.path.join(chunk_progress_dir(filename), f"{chunk_index:04d}.md")
+
+
+def save_text_atomic(path: str, text: str) -> None:
+    temp_path = f"{path}.tmp"
+    with open(temp_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(temp_path, path)
+
+
+def cleanup_chunk_progress(filename: str) -> None:
+    progress_path = chunk_progress_dir(filename)
+    for item in os.listdir(progress_path):
+        os.remove(os.path.join(progress_path, item))
+    os.rmdir(progress_path)
+
+
 # VÒNG LẶP XỬ LÝ TỪNG FILE
 for filename in files:
     source_path = os.path.join(SOURCE_DIR, filename)
@@ -267,6 +309,21 @@ for filename in files:
     has_error = False
 
     for index, chunk in enumerate(chunks, start=1):
+        progress_path = chunk_progress_path(filename, index)
+        if os.path.exists(progress_path):
+            with open(progress_path, "r", encoding="utf-8") as f:
+                saved_chunk = f.read()
+
+            try:
+                validate_edited_text(chunk, saved_chunk)
+                outputs.append(saved_chunk)
+                prior_chunk = chunk
+                print(f"    -> Bỏ qua phần {index}/{len(chunks)} (đã có progress)")
+                continue
+            except Exception as e:
+                print(f"    -> Progress phần {index} không hợp lệ, dịch lại: {e}")
+                os.remove(progress_path)
+
         print(f"    -> Đang dịch phần {index}/{len(chunks)} ({len(chunk)} ký tự)")
         context = previous_context(prior_chunk, args.overlap_paragraphs)
         prompt = create_chunk_prompt(chunk, index, len(chunks), context)
@@ -300,6 +357,7 @@ for filename in files:
             
             outputs.append(output_chunk)
             prior_chunk = chunk
+            save_text_atomic(progress_path, output_chunk)
             
         except requests.exceptions.ConnectionError:
             print("Lỗi: Không thể kết nối tới Ollama.")
@@ -325,8 +383,8 @@ for filename in files:
         continue
 
     # Ghi kết quả
-    with open(target_path, "w", encoding="utf-8") as f:
-        f.write(merged_output)
+    save_text_atomic(target_path, merged_output)
+    cleanup_chunk_progress(filename)
 
     print(f"    -> Hoàn tất lưu {filename}.")
 

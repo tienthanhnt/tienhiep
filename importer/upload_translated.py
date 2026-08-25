@@ -34,8 +34,9 @@ EXISTING_CHAPTER_PAGE_SIZE = 1000
 UPLOAD_RETRY_COUNT = 3
 COVER_CACHE_CONTROL = "86400"
 CHAPTER_CACHE_CONTROL = "86400"
-COVER_SIZE = "320x480"
-COVER_QUALITY = "66"
+COVER_CANVAS_SIZE = "320x480"
+COVER_SIZE = "240x360"
+COVER_QUALITY = "46"
 
 
 def safe_storage_name(value: str) -> str:
@@ -310,7 +311,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
     temp.close()
     command = [
         converter,
-        "-size", COVER_SIZE,
+        "-size", COVER_CANVAS_SIZE,
         "gradient:#fbf6ea-#dcc18c",
         "-fill", "#ead7af",
         "-draw", "rectangle 16,16 304,464",
@@ -360,6 +361,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         "-fill", "#6f512eaa",
         "-pointsize", "12",
         "-annotate", "+16+16", "Tiên Hiệp Lâu",
+        "-resize", f"{COVER_SIZE}>",
         "-strip",
         "-quality", COVER_QUALITY,
         "-define", "webp:method=6",
