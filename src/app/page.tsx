@@ -1,11 +1,9 @@
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
-import AdSlot from "@/components/AdSlot";
 import { formatCompactNumber } from "@/lib/format";
 import { redirect } from "next/navigation";
 
-export const revalidate = 600;
-export const dynamic = "force-dynamic";
+export const revalidate = 1800;
 const BOOKS_PER_PAGE = 20;
 
 const MOCK_BOOKS = [
@@ -100,7 +98,7 @@ async function getBooksPage(page: number) {
         Authorization: `Bearer ${key}`,
         Prefer: "count=exact",
       },
-      next: { revalidate: 600 },
+      next: { revalidate: 1800 },
     });
     if (!res.ok) return { books: [] as SupabaseBook[], totalCount: 0 };
     return {
@@ -120,7 +118,7 @@ async function getSearchBooks() {
   try {
     const res = await fetch(`${url}/rest/v1/books?select=id,title,author,chapter_count,rating,status,cover_url,genres,source_type,view_count,ranking&order=ranking.asc.nullslast,id.asc`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
-      next: { revalidate: 600 },
+      next: { revalidate: 1800 },
     });
     if (!res.ok) return [];
     return await res.json() as SupabaseBook[];
@@ -152,16 +150,16 @@ export default async function Home({
   }
 
   return (
-    <div className="flex flex-col gap-9">
-      <section className="text-center pt-2 pb-9 border-b border-[#DDD5C8]/80">
-        <div className="mx-auto mb-4 h-px w-32 soft-divider" />
+    <div className="flex flex-col gap-5 md:gap-6">
+      <section className="text-center pt-1 pb-5 md:pb-6 border-b border-[#DDD5C8]/80">
+        <div className="mx-auto mb-3 h-px w-28 soft-divider" />
         <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">
           Tiên Hiệp Lâu
         </h1>
-        <p className="mt-3 text-sm md:text-base text-[#5E5448] font-serif-reading italic leading-relaxed">
+        <p className="mt-2 text-sm md:text-base text-[#5E5448] font-serif-reading italic leading-relaxed">
           &ldquo;Độc vạn quyển thư, hành vạn lý lộ, phá vạn trùng quan.&rdquo;
         </p>
-        <div className="mx-auto mt-5 h-px w-24 soft-divider opacity-70" />
+        <div className="mx-auto mt-4 h-px w-20 soft-divider opacity-70" />
       </section>
 
       <RecentReading />
@@ -174,8 +172,6 @@ export default async function Home({
         totalCount={totalCount || books.length}
         pageSize={BOOKS_PER_PAGE}
       />
-
-      <AdSlot placement="home" />
 
       <div className="self-center rounded border border-[#E8E0D2] px-2.5 py-1 text-[11px] text-[#A09688]">
         Tổng lượt đọc: {formatCompactNumber(totalViewCount)}

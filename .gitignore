@@ -28,3 +28,6 @@ importer/chapters/
 /importer/chapters/Xich_Tam_Tuan_Thien/book_info.txt
 /importer/chapters/Xich_Tam_Tuan_Thien_Translated/book_info.txt
 importer/tien_hiep/
+importer/log.txt
+importer/theme_codegen_candidates.txt
+importer/theme_regen_progress.txt

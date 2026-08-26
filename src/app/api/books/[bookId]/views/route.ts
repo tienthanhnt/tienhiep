@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
+const BOT_USER_AGENT_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|uptime|vercel|headless/i;
+
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { bookId: string } }
 ) {
   const bookId = Number(params.bookId);
@@ -14,6 +16,11 @@ export async function POST(
 
   if (!url || !key) {
     return NextResponse.json({ error: "Missing Supabase config" }, { status: 500 });
+  }
+
+  const userAgent = request.headers.get("user-agent") || "";
+  if (BOT_USER_AGENT_PATTERN.test(userAgent)) {
+    return NextResponse.json({ skipped: true });
   }
 
   try {
@@ -38,4 +45,3 @@ export async function POST(
     return NextResponse.json({ error: "Could not record view" }, { status: 502 });
   }
 }
-

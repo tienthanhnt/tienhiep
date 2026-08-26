@@ -3,7 +3,6 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import AdSlot from './AdSlot';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -25,6 +24,8 @@ interface ChapterNavItem {
 const RECENT_READING_KEY = 'tang-kinh-cac:recent-reading';
 const RECENT_READING_LIMIT = 1;
 const TOC_PAGE_SIZE = 100;
+const VIEW_TRACKING_KEY = 'tien-hiep-lau:tracked-book-views';
+const VIEW_TRACKING_INTERVAL_MS = 30 * 60 * 1000;
 
 export default function ChapterReader({
   bookId,
@@ -81,12 +82,30 @@ export default function ChapterReader({
     if (trackedViewKey.current === viewKey) return;
     trackedViewKey.current = viewKey;
 
-    fetch(`/api/books/${bookId}/views`, {
-      method: 'POST',
-      keepalive: true,
-    }).catch(() => {
-      // View tracking should never interrupt reading.
-    });
+    const timeout = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(VIEW_TRACKING_KEY);
+        const tracked = raw ? JSON.parse(raw) : {};
+        const lastTrackedAt = Number(tracked?.[bookId] || 0);
+        if (Date.now() - lastTrackedAt < VIEW_TRACKING_INTERVAL_MS) return;
+
+        window.localStorage.setItem(
+          VIEW_TRACKING_KEY,
+          JSON.stringify({ ...tracked, [bookId]: Date.now() })
+        );
+      } catch {
+        // Continue tracking even when localStorage is unavailable.
+      }
+
+      fetch(`/api/books/${bookId}/views`, {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => {
+        // View tracking should never interrupt reading.
+      });
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
   }, [bookId, chapterNumber]);
 
   useEffect(() => {
@@ -534,8 +553,6 @@ export default function ChapterReader({
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
       </div>
-
-      <AdSlot placement="chapter" />
 
       {/* Navigation Buttons Bottom */}
       <div className="flex justify-between items-center text-xs font-semibold mt-4">

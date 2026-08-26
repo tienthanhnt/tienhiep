@@ -95,7 +95,7 @@ export default function BookSearchSection({
 
   return (
     <section>
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex items-center gap-3 border-l-2 border-[#B99654] pl-3">
           <h2 className="text-base font-bold text-[#26211C] tracking-wide">
             Danh sách truyện

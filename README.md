@@ -985,42 +985,23 @@ Cấu trúc thực tế có thể được tinh chỉnh khi scaffold dự án, n
 - Deploy Next.js lên Vercel.
 - Kiểm tra URL production, logs và sitemap.
 
-## 18. Tiêu chí nghiệm thu MVP
-
-MVP được coi là hoàn thành khi:
-
-- Website chạy local bằng hướng dẫn trong README.
-- Có thể nhập tự động một thư mục chứa nhiều EPUB/TXT/DOCX/DOC.
-- Import lại cùng file không tạo truyện/chương trùng.
-- Trang chủ, danh sách, thể loại, tìm kiếm, chi tiết và đọc chương hoạt động.
-- Người dùng chuyển chương và lưu tiến độ không cần tài khoản.
-- Website sử dụng tốt trên mobile và desktop.
-- Một truyện có hàng nghìn chương không làm treo trang chi tiết.
-- Ảnh bìa và nội dung được tải ngoài source bundle.
-- Quảng cáo tắt mặc định nhưng có sẵn vị trí tích hợp.
-- Database và file có quy trình backup/migrate.
-- Dự án có thể deploy lên Vercel mà không đưa thư viện truyện vào GitHub.
-
-## 19. Các quyết định cần review trước khi code
-
-Các giá trị dưới đây là đề xuất mặc định. Cần xác nhận hoặc thay đổi trước khi bắt đầu scaffold:
-
-1. **Tên website:** chưa chốt; dùng tên tạm “Website đọc truyện”.
-2. **Màu chủ đạo:** xanh dương, giao diện sáng giống mật độ bố cục trang tham khảo.
-3. **Database local:** Supabase Local qua Docker.
-4. **Cloud mặc định:** Vercel + Supabase Free.
-5. **Nội dung chương:** lưu PostgreSQL ở MVP.
-6. **File gốc:** mặc định không upload lên cloud để tiết kiệm dung lượng; thư viện offline là bản sao gốc.
-7. **Trạng thái file offline:** mặc định `completed`, có thể override khi import.
-8. **Tìm kiếm:** tên truyện/tên khác/tác giả; chưa tìm trong toàn bộ nội dung chương.
-9. **Rating:** không hiển thị ở MVP.
-10. **Quảng cáo:** chỉ dành sẵn vị trí, tắt hoàn toàn cho tới khi được cấu hình.
-11. **SEO article:** hỗ trợ Markdown nhưng chưa cần viết bài dài ở MVP.
-12. **Thứ tự parser:** EPUB và TXT trước, DOCX và DOC sau.
-
-Sau khi tài liệu này được duyệt, bước tiếp theo mới là scaffold mã nguồn và tạo môi trường local.
 
 #### Domain page
 https://vercel.com/tienhiep/tienhiep/settings/domains
 
 source venv/bin/activate
+Truyen moi down ve: Duong Chuyen, De Ton, Vinh Hang Thanh Vuong, Mao Son Troc quy nhan, Than Dao Dan Ton, Linh Vu Thien Ha, Van Co Chi Ton
+
+ python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/than-dao-dan-ton-6060282/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Than_Dao_Dan_Ton   --delay 1   --manual-unlock   --placeholder-on-blocked
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/mao-son-troc-quy-nhan/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Mao_Son_Troc_Quy_Nhan   --delay 1   --manual-unlock   --placeholder-on-blocked
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/vinh-hang-thanh-vuong/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Vinh_Hang_Thanh_Vuong   --delay 1   --manual-unlock   --placeholder-on-blocked
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/de-ton/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/De_Ton_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/duong-chuyen/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Duong_Chuyen_Translated/   --delay 1   --manual-unlock   --placeholder-on-blocked
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/linh-vu-thien-ha/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Linh_Vu_Thien_Ha_Full_Translated/   --delay 1   --manual-unlock   --placeholder-on-blocked
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/van-co-chi-ton/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Van_Co_Chi_Ton_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked

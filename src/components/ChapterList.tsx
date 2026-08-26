@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Chapter {
   id: number;
@@ -12,46 +12,104 @@ interface Chapter {
 
 interface ChapterListProps {
   bookId: number;
-  chapters: Chapter[];
+  initialChapters: Chapter[];
+  chapterCount: number;
 }
 
 const CHAPTERS_PER_PAGE = 100;
 
-export default function ChapterList({ bookId, chapters }: ChapterListProps) {
+export default function ChapterList({ bookId, initialChapters, chapterCount }: ChapterListProps) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  const [chapterCache, setChapterCache] = useState<Record<number, Chapter[]>>({ 0: initialChapters });
+  const [searchResults, setSearchResults] = useState<Chapter[] | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const latestChapter = chapters[chapters.length - 1];
-  const totalPages = Math.max(1, Math.ceil(chapters.length / CHAPTERS_PER_PAGE));
+  const currentChapters = useMemo(() => chapterCache[page] || [], [chapterCache, page]);
+  const latestChapterNumber = chapterCount || initialChapters[initialChapters.length - 1]?.chapter_number || 1;
+  const totalPages = Math.max(1, Math.ceil((chapterCount || initialChapters.length) / CHAPTERS_PER_PAGE));
 
   const pageRanges = useMemo(() => {
     return Array.from({ length: totalPages }, (_, index) => {
-      const startIndex = index * CHAPTERS_PER_PAGE;
-      const endIndex = Math.min(startIndex + CHAPTERS_PER_PAGE - 1, chapters.length - 1);
-      const firstChapter = chapters[startIndex]?.chapter_number ?? startIndex + 1;
-      const lastChapter = chapters[endIndex]?.chapter_number ?? endIndex + 1;
+      const firstChapter = index * CHAPTERS_PER_PAGE + 1;
+      const lastChapter = Math.min((index + 1) * CHAPTERS_PER_PAGE, chapterCount || firstChapter + CHAPTERS_PER_PAGE - 1);
 
       return {
         index,
         label: `Chương ${firstChapter}-${lastChapter}`,
       };
     });
-  }, [chapters, totalPages]);
+  }, [chapterCount, totalPages]);
+
+  useEffect(() => {
+    if (chapterCache[page]) return;
+
+    let ignore = false;
+    async function loadPage() {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/books/${bookId}/chapters?page=${page}`);
+        const data = await response.json() as { chapters?: Chapter[] };
+        if (!ignore) {
+          setChapterCache((current) => ({ ...current, [page]: data.chapters || [] }));
+        }
+      } catch {
+        if (!ignore) {
+          setChapterCache((current) => ({ ...current, [page]: [] }));
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadPage();
+    return () => {
+      ignore = true;
+    };
+  }, [bookId, chapterCache, page]);
+
+  useEffect(() => {
+    const keyword = query.trim();
+    if (keyword.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+
+    let ignore = false;
+    const timeout = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/books/${bookId}/chapters?q=${encodeURIComponent(keyword)}`);
+        const data = await response.json() as { chapters?: Chapter[] };
+        if (!ignore) setSearchResults(data.chapters || []);
+      } catch {
+        if (!ignore) setSearchResults([]);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      ignore = true;
+      window.clearTimeout(timeout);
+    };
+  }, [bookId, query]);
 
   const filteredChapters = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) {
-      const start = page * CHAPTERS_PER_PAGE;
-      return chapters.slice(start, start + CHAPTERS_PER_PAGE);
+      return currentChapters;
     }
 
-    return chapters.filter((chapter) => {
+    if (searchResults) return searchResults;
+
+    return currentChapters.filter((chapter) => {
       return (
         chapter.title.toLowerCase().includes(keyword) ||
         String(chapter.chapter_number).includes(keyword)
       );
     });
-  }, [chapters, page, query]);
+  }, [currentChapters, query, searchResults]);
 
   const hasQuery = query.trim().length > 0;
 
@@ -59,12 +117,12 @@ export default function ChapterList({ bookId, chapters }: ChapterListProps) {
     <div className="p-5 md:p-6 rounded-lg border border-[#DDD5C8] bg-[#FBFAF7]/90 shadow-[0_8px_26px_rgba(66,52,35,0.05)]">
       <div className="mb-5 flex flex-col gap-3 border-b border-[#DDD5C8] pb-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-lg font-bold text-[#2C2825]">
-          Danh sách chương ({chapters.length})
+          Danh sách chương ({chapterCount || initialChapters.length})
         </h2>
 
-        {latestChapter && (
+        {latestChapterNumber > 0 && (
           <Link
-            href={`/books/${bookId}/chapters/${latestChapter.chapter_number}`}
+            href={`/books/${bookId}/chapters/${latestChapterNumber}`}
             className="inline-flex w-fit items-center justify-center rounded-md border border-[#D0BC90] bg-[#F3EBDD] px-3.5 py-2 text-xs font-semibold text-[#5C5449] transition-colors hover:bg-[#C69C4E] hover:text-white"
           >
             Đọc chương mới nhất
@@ -72,7 +130,7 @@ export default function ChapterList({ bookId, chapters }: ChapterListProps) {
         )}
       </div>
 
-      {chapters.length === 0 ? (
+      {(chapterCount || initialChapters.length) === 0 ? (
         <p className="text-[#8C8373] py-6 text-center text-sm">Chưa có chương nào được upload.</p>
       ) : (
         <>
@@ -123,7 +181,11 @@ export default function ChapterList({ bookId, chapters }: ChapterListProps) {
             </div>
           )}
 
-          {filteredChapters.length === 0 ? (
+          {loading && filteredChapters.length === 0 ? (
+            <p className="py-8 text-center text-sm text-[#8C8373]">
+              Đang tải danh sách chương...
+            </p>
+          ) : filteredChapters.length === 0 ? (
             <p className="py-8 text-center text-sm text-[#8C8373]">
               Không tìm thấy chương phù hợp.
             </p>

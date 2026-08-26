@@ -5,7 +5,7 @@ import ChapterList from '@/components/ChapterList';
 import { formatCompactNumber } from '@/lib/format';
 import { buildBookDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
-export const revalidate = 900;
+export const revalidate = 3600;
 
 interface Chapter {
   id: number;
@@ -44,31 +44,20 @@ async function getBookDetails(id: string) {
     const headers = { apikey: key, Authorization: `Bearer ${key}` };
     const resBook = await fetch(`${url}/rest/v1/books?id=eq.${id}`, {
       headers,
-      next: { revalidate: 900 },
+      next: { revalidate: 3600 },
     });
     if (!resBook.ok) return null;
     const books = await resBook.json();
     if (!books || books.length === 0) return null;
 
-    const chapters: Chapter[] = [];
-    const pageSize = 1000;
-    for (let from = 0; ; from += pageSize) {
-      const to = from + pageSize - 1;
-      const resChapters = await fetch(
-        `${url}/rest/v1/chapters?book_id=eq.${id}&select=id,chapter_number,title,created_at&order=chapter_number.asc`,
-        {
-          headers: {
-            ...headers,
-            Range: `${from}-${to}`,
-          },
-          next: { revalidate: 900 },
-        }
-      );
-      if (!resChapters.ok) break;
-      const batch = await resChapters.json() as Chapter[];
-      chapters.push(...batch);
-      if (batch.length < pageSize) break;
-    }
+    const resChapters = await fetch(
+      `${url}/rest/v1/chapters?book_id=eq.${id}&select=id,chapter_number,title,created_at&order=chapter_number.asc&limit=100`,
+      {
+        headers,
+        next: { revalidate: 3600 },
+      }
+    );
+    const chapters = resChapters.ok ? await resChapters.json() as Chapter[] : [];
 
     return {
       book: books[0] as Book,
@@ -91,7 +80,7 @@ async function getBookSeoData(id: string) {
       `${url}/rest/v1/books?id=eq.${id}`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
-        next: { revalidate: 900 },
+        next: { revalidate: 3600 },
       }
     );
     if (!res.ok) return null;
@@ -195,7 +184,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
                 {book.status || "Đang ra"}
               </span>
               <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
-                {chapters.length} chương
+                {book.chapter_count || chapters.length} chương
               </span>
               <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
                 {formatCompactNumber(book.view_count)} lượt đọc
@@ -228,7 +217,11 @@ export default async function BookDetailPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      <ChapterList bookId={book.id} chapters={chapters} />
+      <ChapterList
+        bookId={book.id}
+        initialChapters={chapters}
+        chapterCount={book.chapter_count || chapters.length}
+      />
     </div>
   );
 }
