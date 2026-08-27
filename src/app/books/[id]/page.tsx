@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
+import AdsterraBanner from '@/components/AdsterraBanner';
+import AdsterraBanner4 from '@/components/AdsterraBanner4';
 import { formatCompactNumber } from '@/lib/format';
 import { buildBookDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
@@ -217,11 +219,17 @@ export default async function BookDetailPage({ params }: { params: { id: string 
         </div>
       </div>
 
+      <div className="flex justify-center w-full">
+        <AdsterraBanner4 />
+      </div>
+
       <ChapterList
         bookId={book.id}
         initialChapters={chapters}
         chapterCount={book.chapter_count || chapters.length}
       />
+
+      <AdsterraBanner />
     </div>
   );
 }

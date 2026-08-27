@@ -1,5 +1,8 @@
+import { Suspense } from "react";
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
+import AdsterraBanner3 from "@/components/AdsterraBanner3";
+import AdsterraBanner4 from "@/components/AdsterraBanner4";
 import { formatCompactNumber } from "@/lib/format";
 import { redirect } from "next/navigation";
 
@@ -164,14 +167,30 @@ export default async function Home({
 
       <RecentReading />
 
-      <BookSearchSection
-        books={books}
-        searchBooks={searchBooks}
-        currentPage={requestedPage}
-        totalPages={totalPages}
-        totalCount={totalCount || books.length}
-        pageSize={BOOKS_PER_PAGE}
-      />
+      <Suspense fallback={
+        <div className="rounded-md border border-[#DDD5C8] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#6B6357]">
+          Đang tải danh sách truyện...
+        </div>
+      }>
+        <BookSearchSection
+          books={books}
+          searchBooks={searchBooks}
+          currentPage={requestedPage}
+          totalPages={totalPages}
+          totalCount={totalCount || books.length}
+          pageSize={BOOKS_PER_PAGE}
+        />
+      </Suspense>
+
+      {/* Bottom ad section: Medium Rectangle + Leaderboard */}
+      <div className="flex flex-col items-center gap-4 my-4 w-full overflow-hidden">
+        <div className="flex justify-center w-full">
+          <AdsterraBanner4 />
+        </div>
+        <div className="flex justify-center w-full hidden md:flex">
+          <AdsterraBanner3 />
+        </div>
+      </div>
 
       <div className="self-center rounded border border-[#E8E0D2] px-2.5 py-1 text-[11px] text-[#A09688]">
         Tổng lượt đọc: {formatCompactNumber(totalViewCount)}

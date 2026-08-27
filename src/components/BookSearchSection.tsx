@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import BookCard from "@/components/BookCard";
 
 interface BookSearchItem {
@@ -64,8 +65,17 @@ export default function BookSearchSection({
   totalCount,
   pageSize,
 }: BookSearchSectionProps) {
-  const [inputValue, setInputValue] = useState("");
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
+
+  const [inputValue, setInputValue] = useState(urlQuery);
+  const [query, setQuery] = useState(urlQuery);
+
+  useEffect(() => {
+    setInputValue(urlQuery);
+    setQuery(urlQuery);
+  }, [urlQuery]);
 
   const searchableBooks = useMemo(
     () => searchBooks.map((book) => ({ book, searchContent: getSearchContent(book) })),
@@ -86,11 +96,17 @@ export default function BookSearchSection({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setQuery(inputValue);
+    if (inputValue.trim()) {
+      router.push(`/?q=${encodeURIComponent(inputValue.trim())}`);
+    } else {
+      router.push("/");
+    }
   }
 
   function clearSearch() {
     setInputValue("");
     setQuery("");
+    router.push("/");
   }
 
   return (

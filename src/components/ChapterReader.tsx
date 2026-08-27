@@ -3,6 +3,9 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import AdsterraBanner from './AdsterraBanner';
+import AdsterraBanner2 from './AdsterraBanner2';
+import AdsterraNativeBanner from './AdsterraNativeBanner';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -547,11 +550,51 @@ export default function ChapterReader({
           {chapterTitle}
         </h1>
 
-        <div
-          className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
-          style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
-          dangerouslySetInnerHTML={{ __html: contentHtml }}
-        />
+        {(() => {
+          // Split into thirds at paragraph boundaries
+          const parts = contentHtml.split(/(<\/p>|<br\s*\/?>\s*<br\s*\/?>|\n\n+)/i);
+          if (parts.length > 6) {
+            const t1 = Math.floor(parts.length / 3);
+            const t2 = Math.floor((parts.length * 2) / 3);
+            const firstThird  = parts.slice(0, t1).join('');
+            const middleThird = parts.slice(t1, t2).join('');
+            const lastThird   = parts.slice(t2).join('');
+            return (
+              <>
+                {/* First 1/3 */}
+                <div
+                  className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
+                  style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
+                  dangerouslySetInnerHTML={{ __html: firstThird }}
+                />
+                {/* Banner 2 — ~1/3 mark */}
+                <AdsterraBanner2 className="my-6 py-3 border-y border-current/10" />
+                {/* Middle 1/3 */}
+                <div
+                  className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
+                  style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
+                  dangerouslySetInnerHTML={{ __html: middleThird }}
+                />
+                {/* Banner 1 — ~2/3 mark */}
+                <AdsterraBanner className="my-8 py-4 border-y border-current/10" />
+                {/* Final 1/3 */}
+                <div
+                  className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
+                  style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
+                  dangerouslySetInnerHTML={{ __html: lastThird }}
+                />
+              </>
+            );
+          }
+          // Short chapter: single block, no mid-ads
+          return (
+            <div
+              className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
+              style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
+              dangerouslySetInnerHTML={{ __html: contentHtml }}
+            />
+          );
+        })()}
       </div>
 
       {/* Navigation Buttons Bottom */}
@@ -562,6 +605,9 @@ export default function ChapterReader({
 
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
+
+      {/* Native Banner Positioned at bottom */}
+      <AdsterraNativeBanner className="my-2" />
     </div>
   );
 }
