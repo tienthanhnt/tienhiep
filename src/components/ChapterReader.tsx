@@ -4,8 +4,8 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
-import AdsterraBanner2 from './AdsterraBanner2';
 import AdsterraNativeBanner from './AdsterraNativeBanner';
+import AdsterraPopunder, { NEXT_CHAPTER_EVENT } from './AdsterraPopunder';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -29,6 +29,7 @@ const RECENT_READING_LIMIT = 1;
 const TOC_PAGE_SIZE = 100;
 const VIEW_TRACKING_KEY = 'tien-hiep-lau:tracked-book-views';
 const VIEW_TRACKING_INTERVAL_MS = 30 * 60 * 1000;
+const POPUNDER_NEXT_CLICK_COUNT_KEY = 'tien-hiep-lau:adsterra-pop-next-click-count';
 
 export default function ChapterReader({
   bookId,
@@ -53,6 +54,7 @@ export default function ChapterReader({
   const [tocError, setTocError] = useState('');
   const [tocSearchResults, setTocSearchResults] = useState<ChapterNavItem[] | null>(null);
   const [tocSearchLoading, setTocSearchLoading] = useState(false);
+  const [nextClickCount, setNextClickCount] = useState(0);
   const trackedViewKey = useRef('');
 
   const prevHref = prevNum ? `/books/${bookId}/chapters/${prevNum}` : null;
@@ -79,6 +81,14 @@ export default function ChapterReader({
       String(chapter.chapter_number).includes(keyword)
     ));
   }, [currentTocChapters, tocQuery, tocSearchResults]);
+
+  useEffect(() => {
+    try {
+      setNextClickCount(Number(window.sessionStorage.getItem(POPUNDER_NEXT_CLICK_COUNT_KEY) || 0));
+    } catch {
+      setNextClickCount(0);
+    }
+  }, []);
 
   useEffect(() => {
     const viewKey = `${bookId}:${chapterNumber}`;
@@ -291,7 +301,8 @@ export default function ChapterReader({
     href: string | null,
     targetChapter: number | null,
     label: string,
-    disabledLabel: string
+    disabledLabel: string,
+    onNavigate?: () => void
   ) => {
     if (!href || !targetChapter) {
       return (
@@ -307,7 +318,10 @@ export default function ChapterReader({
       <Link
         href={href}
         prefetch={false}
-        onClick={() => setLoadingChapter(targetChapter)}
+        onClick={() => {
+          onNavigate?.();
+          setLoadingChapter(targetChapter);
+        }}
         aria-busy={isLoading}
         className={`px-4 py-2 rounded-md text-[#5C5449] transition-all border border-[#C69C4E]/25 min-w-[118px] text-center shadow-sm ${
           isLoading
@@ -318,6 +332,19 @@ export default function ChapterReader({
         {isLoading ? 'Đang tải...' : label}
       </Link>
     );
+  };
+
+  const recordNextChapterClick = () => {
+    setNextClickCount((current) => {
+      const next = current + 1;
+      try {
+        window.sessionStorage.setItem(POPUNDER_NEXT_CLICK_COUNT_KEY, String(next));
+        window.dispatchEvent(new CustomEvent(NEXT_CHAPTER_EVENT, { detail: { clickCount: next } }));
+      } catch {
+        // Ads must never block chapter navigation.
+      }
+      return next;
+    });
   };
 
   const renderTocButton = () => (
@@ -340,6 +367,8 @@ export default function ChapterReader({
 
   return (
     <div className="max-w-3xl mx-auto py-4 flex flex-col gap-6">
+      <AdsterraPopunder nextClickCount={nextClickCount} />
+
       <div className="fixed left-0 right-0 top-0 z-[55] h-0.5 bg-transparent">
         <div
           className="h-full bg-[#B99654] transition-[width] duration-150"
@@ -440,7 +469,7 @@ export default function ChapterReader({
 
         {renderTocButton()}
 
-        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
+        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →', recordNextChapterClick)}
       </div>
 
       {showToc && (
@@ -567,8 +596,6 @@ export default function ChapterReader({
                   style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
                   dangerouslySetInnerHTML={{ __html: firstThird }}
                 />
-                {/* Banner 2 — ~1/3 mark */}
-                <AdsterraBanner2 className="my-6 py-3 border-y border-current/10" />
                 {/* Middle 1/3 */}
                 <div
                   className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
@@ -603,7 +630,7 @@ export default function ChapterReader({
 
         {renderTocButton()}
 
-        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
+        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →', recordNextChapterClick)}
       </div>
 
       {/* Native Banner Positioned at bottom */}
