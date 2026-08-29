@@ -4,6 +4,7 @@ import RecentReading from "@/components/RecentReading";
 import AdsterraBanner3 from "@/components/AdsterraBanner3";
 import AdsterraBanner4 from "@/components/AdsterraBanner4";
 import { formatCompactNumber } from "@/lib/format";
+import { getSiteUrl, SITE_NAME } from "@/lib/seo";
 import { redirect } from "next/navigation";
 
 export const revalidate = 1800;
@@ -152,8 +153,34 @@ export default async function Home({
     redirect(totalPages === 1 ? "/" : `/?page=${totalPages}`);
   }
 
+  const siteUrl = getSiteUrl();
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: siteUrl,
+    inLanguage: "vi",
+    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt với giao diện gọn nhẹ.",
+  };
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: SITE_NAME,
+    url: siteUrl,
+    inLanguage: "vi",
+    description: "Danh sách truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt.",
+    numberOfItems: totalCount || books.length,
+  };
+
   return (
     <div className="flex flex-col gap-5 md:gap-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([websiteJsonLd, collectionJsonLd]).replace(/</g, "\\u003c"),
+        }}
+      />
+
       <section className="text-center pt-1 pb-5 md:pb-6 border-b border-[#DDD5C8]/80">
         <div className="mx-auto mb-3 h-px w-28 soft-divider" />
         <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">
@@ -161,6 +188,9 @@ export default async function Home({
         </h1>
         <p className="mt-2 text-sm md:text-base text-[#5E5448] font-serif-reading italic leading-relaxed">
           &ldquo;Độc vạn quyển thư, hành vạn lý lộ, phá vạn trùng quan.&rdquo;
+        </p>
+        <p className="mx-auto mt-3 max-w-2xl text-xs md:text-sm leading-6 text-[#6B6357]">
+          Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt với giao diện nhẹ, dễ theo dõi chương mới và phù hợp khi đọc lâu trên điện thoại.
         </p>
         <div className="mx-auto mt-4 h-px w-20 soft-divider opacity-70" />
       </section>

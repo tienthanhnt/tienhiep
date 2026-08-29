@@ -9,18 +9,43 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
   },
-  description: "Thư viện truyện tiếng Việt gọn nhẹ, dễ đọc trên mọi thiết bị.",
+  description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt tại Tiên Hiệp Lâu. Giao diện gọn nhẹ, dễ đọc trên điện thoại và máy tính.",
+  keywords: [
+    "đọc truyện tiên hiệp",
+    "truyện tiên hiệp",
+    "truyện huyền huyễn",
+    "truyện kiếm hiệp",
+    "truyện tu tiên",
+    "truyện full",
+    "Tiên Hiệp Lâu",
+  ],
   applicationName: SITE_NAME,
   alternates: {
     canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
     title: SITE_NAME,
-    description: "Thư viện truyện tiếng Việt gọn nhẹ, dễ đọc trên mọi thiết bị.",
+    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt tại Tiên Hiệp Lâu. Giao diện gọn nhẹ, dễ đọc trên điện thoại và máy tính.",
     url: "/",
     locale: "vi_VN",
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_NAME,
+    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt tại Tiên Hiệp Lâu.",
   },
 };
 
