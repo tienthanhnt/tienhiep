@@ -20,7 +20,8 @@ export function slugifyVietnamese(value: string) {
 }
 
 export function getBookPath(book: { id: number; title: string }) {
-  return `/books/${slugifyVietnamese(book.title) || book.id}`;
+  const slug = slugifyVietnamese(book.title);
+  return `/books/${slug ? `${book.id}-${slug}` : book.id}`;
 }
 
 export function getChapterPath(book: { id: number; title: string }, chapterNumber: number) {

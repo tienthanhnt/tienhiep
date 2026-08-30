@@ -16,20 +16,34 @@ interface ChapterListProps {
   bookTitle: string;
   initialChapters: Chapter[];
   chapterCount: number;
+  initialPage?: number;
 }
 
 const CHAPTERS_PER_PAGE = 100;
+const CHAPTER_PAGE_PARAM = 'chaptersPage';
 
-export default function ChapterList({ bookId, bookTitle, initialChapters, chapterCount }: ChapterListProps) {
+function updateChapterPageUrl(nextPage: number) {
+  const url = new URL(window.location.href);
+
+  if (nextPage > 0) {
+    url.searchParams.set(CHAPTER_PAGE_PARAM, String(nextPage));
+  } else {
+    url.searchParams.delete(CHAPTER_PAGE_PARAM);
+  }
+
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+export default function ChapterList({ bookId, bookTitle, initialChapters, chapterCount, initialPage = 0 }: ChapterListProps) {
+  const latestChapterNumber = chapterCount || initialChapters[initialChapters.length - 1]?.chapter_number || 1;
+  const totalPages = Math.max(1, Math.ceil((chapterCount || initialChapters.length) / CHAPTERS_PER_PAGE));
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => Math.min(Math.max(0, initialPage), totalPages - 1));
   const [chapterCache, setChapterCache] = useState<Record<number, Chapter[]>>({ 0: initialChapters });
   const [searchResults, setSearchResults] = useState<Chapter[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   const currentChapters = useMemo(() => chapterCache[page] || [], [chapterCache, page]);
-  const latestChapterNumber = chapterCount || initialChapters[initialChapters.length - 1]?.chapter_number || 1;
-  const totalPages = Math.max(1, Math.ceil((chapterCount || initialChapters.length) / CHAPTERS_PER_PAGE));
 
   const pageRanges = useMemo(() => {
     return Array.from({ length: totalPages }, (_, index) => {
@@ -69,6 +83,12 @@ export default function ChapterList({ bookId, bookTitle, initialChapters, chapte
       ignore = true;
     };
   }, [bookId, chapterCache, page]);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      updateChapterPageUrl(page);
+    }
+  }, [page, query]);
 
   useEffect(() => {
     const keyword = query.trim();

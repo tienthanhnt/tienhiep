@@ -134,7 +134,13 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   };
 }
 
-export default async function BookDetailPage({ params }: { params: { id: string } }) {
+export default async function BookDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { chaptersPage?: string };
+}) {
   const data = await getBookDetails(params.id);
 
   if (!data) {
@@ -142,6 +148,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
   }
 
   const { book, chapters } = data;
+  const initialChapterPage = Math.max(0, Number(searchParams?.chaptersPage || "0") || 0);
   const tags = [...(book.source_type ? [book.source_type] : []), ...splitTags(book.genres)];
   const siteUrl = getSiteUrl();
   const bookUrl = `${siteUrl}${getBookPath(book)}`;
@@ -228,6 +235,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
         bookTitle={book.title}
         initialChapters={chapters}
         chapterCount={book.chapter_count || chapters.length}
+        initialPage={initialChapterPage}
       />
 
       <AdsterraBanner />

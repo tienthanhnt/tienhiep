@@ -196,7 +196,7 @@ export default async function ChapterPage({
   const currentNum = parseInt(params.chapterNum, 10);
 
   const prevNum = currentNum > 1 ? currentNum - 1 : null;
-  const nextNum = currentNum < (book.chapter_count || 9999) ? currentNum + 1 : currentNum + 1;
+  const nextNum = book.chapter_count > 0 && currentNum < book.chapter_count ? currentNum + 1 : null;
 
   return (
     <ChapterReader

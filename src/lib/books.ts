@@ -10,6 +10,9 @@ const BOOK_SLUG_CACHE_SECONDS = 3600;
 export async function resolveBookId(identifier: string) {
   if (/^\d+$/.test(identifier)) return identifier;
 
+  const idSlugMatch = identifier.match(/^(\d+)-/);
+  if (idSlugMatch) return idSlugMatch[1];
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
