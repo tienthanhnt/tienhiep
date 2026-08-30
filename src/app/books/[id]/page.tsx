@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
 import AdsterraBanner from '@/components/AdsterraBanner';
 import { formatCompactNumber } from '@/lib/format';
-import { buildBookDescription, getSiteUrl, SITE_NAME } from '@/lib/seo';
+import { resolveBookId } from '@/lib/books';
+import { buildBookDescription, getBookPath, getChapterPath, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const revalidate = 3600;
 
@@ -35,11 +36,13 @@ function splitTags(value?: string | null) {
     .filter(Boolean);
 }
 
-async function getBookDetails(id: string) {
+async function getBookDetails(identifier: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) return null;
+  const id = await resolveBookId(identifier);
+  if (!id) return null;
 
   try {
     const headers = { apikey: key, Authorization: `Bearer ${key}` };
@@ -70,11 +73,13 @@ async function getBookDetails(id: string) {
   }
 }
 
-async function getBookSeoData(id: string) {
+async function getBookSeoData(identifier: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) return null;
+  const id = await resolveBookId(identifier);
+  if (!id) return null;
 
   try {
     const res = await fetch(
@@ -101,7 +106,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 
   const siteUrl = getSiteUrl();
-  const path = `/books/${book.id}`;
+  const path = getBookPath(book);
   const description = buildBookDescription(book);
   const images = book.cover_url ? [{ url: book.cover_url, alt: book.title }] : undefined;
 
@@ -139,7 +144,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
   const { book, chapters } = data;
   const tags = [...(book.source_type ? [book.source_type] : []), ...splitTags(book.genres)];
   const siteUrl = getSiteUrl();
-  const bookUrl = `${siteUrl}/books/${book.id}`;
+  const bookUrl = `${siteUrl}${getBookPath(book)}`;
   const bookDescription = buildBookDescription(book);
   const bookJsonLd = {
     "@context": "https://schema.org",
@@ -209,7 +214,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
 
           {chapters.length > 0 && (
             <Link
-              href={`/books/${book.id}/chapters/${chapters[0].chapter_number}`}
+              href={getChapterPath(book, chapters[0].chapter_number)}
               className="inline-flex items-center justify-center bg-[#2C2825] hover:bg-[#4A443A] text-white font-semibold px-6 py-2.5 rounded-md transition-all w-fit shadow-sm hover:shadow-md"
             >
               Đọc từ chương 1
@@ -220,6 +225,7 @@ export default async function BookDetailPage({ params }: { params: { id: string 
 
       <ChapterList
         bookId={book.id}
+        bookTitle={book.title}
         initialChapters={chapters}
         chapterCount={book.chapter_count || chapters.length}
       />

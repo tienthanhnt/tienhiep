@@ -994,22 +994,46 @@ Truyen moi down ve: Duong Chuyen, De Ton, Vinh Hang Thanh Vuong, Mao Son Troc qu
 
  python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/than-dao-dan-ton-6060282/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Than_Dao_Dan_Ton   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/mao-son-troc-quy-nhan/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Mao_Son_Troc_Quy_Nhan   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/mao-son-troc-quy-nhan/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Mao_Son_Troc_Quy_Nhan   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/vinh-hang-thanh-vuong/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Vinh_Hang_Thanh_Vuong   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/vinh-hang-thanh-vuong/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Vinh_Hang_Thanh_Vuong   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/de-ton/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/De_Ton_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/de-ton/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/De_Ton_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/duong-chuyen/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Duong_Chuyen_Translated/   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/duong-chuyen/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Duong_Chuyen_Translated/   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/linh-vu-thien-ha/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Linh_Vu_Thien_Ha_Full_Translated/   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/linh-vu-thien-ha/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Linh_Vu_Thien_Ha_Full_Translated/   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/van-co-chi-ton/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Van_Co_Chi_Ton_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/van-co-chi-ton/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Van_Co_Chi_Ton_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/thi-thien-dao/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Thi_Thien_Dao   --delay 2   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/thi-thien-dao/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Thi_Thien_Dao   --delay 2   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/truyen-bach-luyen-thanh-tien-837581/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Bach_Luyen_Thanh_Tien_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/truyen-bach-luyen-thanh-tien-837581/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Bach_Luyen_Thanh_Tien_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
-python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/sat-than/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Sat_Than_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/sat-than/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Sat_Than_Translated   --delay 1   --manual-unlock   --placeholder-on-blocked Done
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/ba-vo-khai-hoang/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Ba_Vo   --delay 1   --manual-unlock   --placeholder-on-blocked Done
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/toan-chuc-cao-thu/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Toan_Chuc_Cao_Thu   --delay 1   --manual-unlock   --placeholder-on-blocked Done
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/de-nhat-kiem-than-799220/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/De_Nhat_Kiem_Than   --delay 1   --manual-unlock   --placeholder-on-blocked Done
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/gia-thien/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Gia_Thien   --delay 1   --manual-unlock   --placeholder-on-blocked Done
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/thien-tai-tien-dao/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Thien_Tai_Tien_Dao   --delay 1   --manual-unlock   --placeholder-on-blocked Done
+
+python3 tools/truyenfull_to_md.py   --book-url 'https://truyenfull.live/tinh-than-bien/trang-1/#list-chapter'   --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Tinh_Than_Bien   --delay 1   --manual-unlock   --placeholder-on-blocked Done
 
 
+python3 tools/webnovel_to_md.py \
+  --book-url 'https://webnovel.vn/dai-huyen-de-nhat-hau/' \
+  --output /home/thanh/Documents/tool_code/code_tool_thread/web/importer/chapters/Dai_Huyen_De_Nhat_Hau \
+  --delay 2 \
+  --placeholder-on-blocked \
+  --max-consecutive-blocked 20
+
+
+ollama pull qwen2.5-coder:14b
+
+Loi Tien Ngao
+TODO: resync toan chuc cao thu

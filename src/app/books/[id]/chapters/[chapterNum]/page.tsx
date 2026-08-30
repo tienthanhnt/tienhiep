@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
-import { buildChapterDescription, getCleanChapterTitle, getSiteUrl, SITE_NAME } from '@/lib/seo';
+import { resolveBookId } from '@/lib/books';
+import { buildChapterDescription, getChapterPath, getCleanChapterTitle, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 const CHAPTER_PAGE_REVALIDATE_SECONDS = 86400;
 const CHAPTER_CONTENT_REVALIDATE_SECONDS = 604800;
@@ -46,11 +47,13 @@ async function fetchChapterContent(chapter: Chapter) {
   return gunzipSync(compressed).toString("utf-8");
 }
 
-async function getChapterData(bookId: string, chapterNum: string) {
+async function getChapterData(bookIdentifier: string, chapterNum: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) return null;
+  const bookId = await resolveBookId(bookIdentifier);
+  if (!bookId) return null;
 
   try {
     const headers = { apikey: key, Authorization: `Bearer ${key}` };
@@ -96,11 +99,13 @@ async function getChapterData(bookId: string, chapterNum: string) {
   }
 }
 
-async function getChapterSeoData(bookId: string, chapterNum: string) {
+async function getChapterSeoData(bookIdentifier: string, chapterNum: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) return null;
+  const bookId = await resolveBookId(bookIdentifier);
+  if (!bookId) return null;
 
   try {
     const headers = { apikey: key, Authorization: `Bearer ${key}` };
@@ -146,7 +151,7 @@ export async function generateMetadata({
 
   const { book, chapter } = data;
   const siteUrl = getSiteUrl();
-  const path = `/books/${book.id}/chapters/${chapter.chapter_number}`;
+  const path = getChapterPath(book, chapter.chapter_number);
   const cleanChapterTitle = getCleanChapterTitle(chapter.title, chapter.chapter_number);
   const title = `${book.title} - Chương ${chapter.chapter_number}: ${cleanChapterTitle}`;
   const description = buildChapterDescription(book.title, chapter.title, chapter.chapter_number);

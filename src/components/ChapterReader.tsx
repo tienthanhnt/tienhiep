@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
 import AdsterraNativeBanner from './AdsterraNativeBanner';
 import AdsterraPopunder, { NEXT_CHAPTER_EVENT } from './AdsterraPopunder';
+import { getBookPath, getChapterPath } from '@/lib/seo';
 
 interface ChapterReaderProps {
   bookId: number;
@@ -25,7 +26,7 @@ interface ChapterNavItem {
 }
 
 const RECENT_READING_KEY = 'tang-kinh-cac:recent-reading';
-const RECENT_READING_LIMIT = 1;
+const RECENT_READING_LIMIT = 2;
 const TOC_PAGE_SIZE = 100;
 const VIEW_TRACKING_KEY = 'tien-hiep-lau:tracked-book-views';
 const VIEW_TRACKING_INTERVAL_MS = 30 * 60 * 1000;
@@ -57,8 +58,9 @@ export default function ChapterReader({
   const [nextClickCount, setNextClickCount] = useState(0);
   const trackedViewKey = useRef('');
 
-  const prevHref = prevNum ? `/books/${bookId}/chapters/${prevNum}` : null;
-  const nextHref = nextNum ? `/books/${bookId}/chapters/${nextNum}` : null;
+  const bookPath = getBookPath({ id: bookId, title: bookTitle });
+  const prevHref = prevNum ? getChapterPath({ id: bookId, title: bookTitle }, prevNum) : null;
+  const nextHref = nextNum ? getChapterPath({ id: bookId, title: bookTitle }, nextNum) : null;
   const totalTocPages = Math.max(1, Math.ceil((chapterCount || chapterNumber) / TOC_PAGE_SIZE));
   const currentTocChapters = useMemo(() => tocCache[tocPage] || [], [tocCache, tocPage]);
   const tocRanges = useMemo(() => {
@@ -403,7 +405,7 @@ export default function ChapterReader({
 
       {/* Top Header Navigation */}
       <div className="flex flex-wrap justify-between items-center text-xs text-[#7A7365] border-b border-[#C69C4E]/20 pb-3 gap-2">
-        <Link href={`/books/${bookId}`} className="hover:text-[#A37B34] font-medium flex items-center gap-1">
+        <Link href={bookPath} className="hover:text-[#A37B34] font-medium flex items-center gap-1">
           &larr; {bookTitle}
         </Link>
         <span className="font-semibold text-[#2C2825] bg-[#E8E0D2] px-3 py-1 rounded-full shadow-sm">
@@ -550,7 +552,7 @@ export default function ChapterReader({
                   return (
                     <Link
                       key={chapter.id}
-                      href={`/books/${bookId}/chapters/${chapter.chapter_number}`}
+                      href={getChapterPath({ id: bookId, title: bookTitle }, chapter.chapter_number)}
                       prefetch={false}
                       onClick={() => setLoadingChapter(chapter.chapter_number)}
                       className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${

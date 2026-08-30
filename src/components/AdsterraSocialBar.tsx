@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 const SOCIAL_BAR_SCRIPT_ID = "adsterra-social-bar-script";
 const SOCIAL_BAR_SRC =
   "https://pl31084590.profitableratecpmnetwork.com/33/d1/5d/33d15db9062b09b7bad58b10c826b4e9.js";
-const LOAD_DELAY_MS = 8 * 60 * 1000;
-const COOLDOWN_MS = 25 * 60 * 1000;
+const LOAD_DELAY_MS = 8 * 1000;
+const COOLDOWN_MS = 15 * 60 * 1000;
 const LAST_SHOWN_KEY = "tien-hiep-lau:adsterra-social-bar-last-shown-at";
 
 export default function AdsterraSocialBar() {

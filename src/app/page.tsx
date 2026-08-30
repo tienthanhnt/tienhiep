@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 
 export const revalidate = 1800;
 const BOOKS_PER_PAGE = 20;
+const SITE_DESCRIPTION = "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên dịch full tiếng Việt miễn phí, cập nhật chương mới mỗi ngày.";
 
 const MOCK_BOOKS = [
   {
@@ -160,7 +161,7 @@ export default async function Home({
     name: SITE_NAME,
     url: siteUrl,
     inLanguage: "vi",
-    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt với giao diện gọn nhẹ.",
+    description: SITE_DESCRIPTION,
   };
   const collectionJsonLd = {
     "@context": "https://schema.org",
@@ -173,7 +174,7 @@ export default async function Home({
   };
 
   return (
-    <div className="flex flex-col gap-5 md:gap-6">
+    <div className="flex flex-col gap-3 md:gap-4">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -181,18 +182,18 @@ export default async function Home({
         }}
       />
 
-      <section className="text-center pt-1 pb-5 md:pb-6 border-b border-[#DDD5C8]/80">
-        <div className="mx-auto mb-3 h-px w-28 soft-divider" />
+      <section className="text-center pt-1 pb-3 md:pb-4 border-b border-[#DDD5C8]/80">
+        <div className="mx-auto mb-2 h-px w-28 soft-divider" />
         <h1 className="font-serif-reading text-3xl md:text-5xl font-bold text-[#26211C] leading-tight">
           Tiên Hiệp Lâu
         </h1>
         <p className="mt-2 text-sm md:text-base text-[#5E5448] font-serif-reading italic leading-relaxed">
           &ldquo;Độc vạn quyển thư, hành vạn lý lộ, phá vạn trùng quan.&rdquo;
         </p>
-        <p className="mx-auto mt-3 max-w-2xl text-xs md:text-sm leading-6 text-[#6B6357]">
-          Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt với giao diện nhẹ, dễ theo dõi chương mới và phù hợp khi đọc lâu trên điện thoại.
+        <p className="mx-auto mt-2 max-w-2xl text-xs md:text-sm leading-6 text-[#6B6357]">
+          {SITE_DESCRIPTION}
         </p>
-        <div className="mx-auto mt-4 h-px w-20 soft-divider opacity-70" />
+        <div className="mx-auto mt-3 h-px w-20 soft-divider opacity-70" />
       </section>
 
       <RecentReading />

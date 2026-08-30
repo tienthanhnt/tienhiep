@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
-import { getSiteUrl } from "@/lib/seo";
+import { getBookPath, getSiteUrl } from "@/lib/seo";
 
 export const revalidate = 3600;
 
 interface SitemapBook {
   id: number;
+  title: string;
   created_at?: string | null;
 }
 
@@ -42,7 +43,7 @@ async function fetchAllFromSupabase<T>(path: string) {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
-  const books = await fetchAllFromSupabase<SitemapBook>("books?select=id,created_at&order=ranking.asc.nullslast,id.asc");
+  const books = await fetchAllFromSupabase<SitemapBook>("books?select=id,title,created_at&order=ranking.asc.nullslast,id.asc");
 
   return [
     {
@@ -52,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     ...books.map((book) => ({
-      url: `${siteUrl}/books/${book.id}`,
+      url: `${siteUrl}${getBookPath(book)}`,
       lastModified: book.created_at ? new Date(book.created_at) : new Date(),
       changeFrequency: "daily" as const,
       priority: 0.8,

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { formatCompactNumber } from '@/lib/format';
+import { getBookPath } from '@/lib/seo';
 
 interface BookCardProps {
   id: number;
@@ -23,9 +24,10 @@ function splitTags(value?: string) {
 
 export default function BookCard({ id, title, author, chapterCount, status, coverUrl, genres, sourceType, viewCount }: BookCardProps) {
   const tags = [...(sourceType ? [sourceType] : []), ...splitTags(genres)].slice(0, 3);
+  const bookPath = getBookPath({ id, title });
 
   return (
-    <Link href={`/books/${id}`} className="group flex flex-col gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#B99654]/50">
+    <Link href={bookPath} className="group flex flex-col gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#B99654]/50">
       {/* Cover */}
       <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md border border-[#D8CDBB] bg-[#EFE9DC] shadow-[0_4px_14px_rgba(66,52,35,0.08)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#B99654]/70 group-hover:shadow-[0_10px_24px_rgba(66,52,35,0.14)]">
         <img

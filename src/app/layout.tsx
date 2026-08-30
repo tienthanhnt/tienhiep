@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
   },
-  description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt tại Tiên Hiệp Lâu. Giao diện gọn nhẹ, dễ đọc trên điện thoại và máy tính.",
+  description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên dịch full tiếng Việt miễn phí, cập nhật chương mới mỗi ngày.",
   keywords: [
     "đọc truyện tiên hiệp",
     "truyện tiên hiệp",
@@ -39,14 +39,14 @@ export const metadata: Metadata = {
     type: "website",
     siteName: SITE_NAME,
     title: SITE_NAME,
-    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt tại Tiên Hiệp Lâu. Giao diện gọn nhẹ, dễ đọc trên điện thoại và máy tính.",
+    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên dịch full tiếng Việt miễn phí, cập nhật chương mới mỗi ngày.",
     url: "/",
     locale: "vi_VN",
   },
   twitter: {
     card: "summary",
     title: SITE_NAME,
-    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt tại Tiên Hiệp Lâu.",
+    description: "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên dịch full tiếng Việt miễn phí, cập nhật chương mới mỗi ngày.",
   },
 };
 

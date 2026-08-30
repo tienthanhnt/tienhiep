@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { getChapterPath } from '@/lib/seo';
 
 interface Chapter {
   id: number;
@@ -12,13 +13,14 @@ interface Chapter {
 
 interface ChapterListProps {
   bookId: number;
+  bookTitle: string;
   initialChapters: Chapter[];
   chapterCount: number;
 }
 
 const CHAPTERS_PER_PAGE = 100;
 
-export default function ChapterList({ bookId, initialChapters, chapterCount }: ChapterListProps) {
+export default function ChapterList({ bookId, bookTitle, initialChapters, chapterCount }: ChapterListProps) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
   const [chapterCache, setChapterCache] = useState<Record<number, Chapter[]>>({ 0: initialChapters });
@@ -122,7 +124,7 @@ export default function ChapterList({ bookId, initialChapters, chapterCount }: C
 
         {latestChapterNumber > 0 && (
           <Link
-            href={`/books/${bookId}/chapters/${latestChapterNumber}`}
+            href={getChapterPath({ id: bookId, title: bookTitle }, latestChapterNumber)}
             className="inline-flex w-fit items-center justify-center rounded-md border border-[#D0BC90] bg-[#F3EBDD] px-3.5 py-2 text-xs font-semibold text-[#5C5449] transition-colors hover:bg-[#C69C4E] hover:text-white"
           >
             Đọc chương mới nhất
@@ -201,7 +203,7 @@ export default function ChapterList({ bookId, initialChapters, chapterCount }: C
                 {filteredChapters.map((ch) => (
                   <Link
                     key={ch.id}
-                    href={`/books/${bookId}/chapters/${ch.chapter_number}`}
+                    href={getChapterPath({ id: bookId, title: bookTitle }, ch.chapter_number)}
                     className="p-3 rounded-md bg-white/78 hover:bg-[#F4EFE6] text-[#2C2825] hover:text-[#7A5B1E] text-sm font-medium transition-all flex justify-between items-center border border-[#E8E0D2] hover:border-[#D0BC90]"
                   >
                     <span className="truncate">{ch.title}</span>

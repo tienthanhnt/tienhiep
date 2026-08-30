@@ -8,6 +8,25 @@ export function getSiteUrl() {
   return siteUrl.replace(/\/+$/, "");
 }
 
+export function slugifyVietnamese(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function getBookPath(book: { id: number; title: string }) {
+  return `/books/${slugifyVietnamese(book.title) || book.id}`;
+}
+
+export function getChapterPath(book: { id: number; title: string }, chapterNumber: number) {
+  return `${getBookPath(book)}/chapters/${chapterNumber}`;
+}
+
 export function buildBookDescription(book: {
   title: string;
   author?: string | null;
