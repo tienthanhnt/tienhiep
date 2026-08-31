@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isIosOrInAppBrowser } from "@/lib/adGuards";
 
 interface AdsterraPopunderProps {
   nextClickCount: number;
@@ -20,6 +21,7 @@ export default function AdsterraPopunder({ nextClickCount }: AdsterraPopunderPro
   const shownInThisPage = useRef(false);
 
   const tryLoadPopunder = useCallback((clickCount = nextClickCount) => {
+    if (isIosOrInAppBrowser()) return;
     if (shownInThisPage.current || !readEligible || clickCount < 2) return;
     if (document.getElementById(POPUNDER_SCRIPT_ID)) return;
 
@@ -41,6 +43,8 @@ export default function AdsterraPopunder({ nextClickCount }: AdsterraPopunderPro
   }, [nextClickCount, readEligible]);
 
   useEffect(() => {
+    if (isIosOrInAppBrowser()) return;
+
     let mounted = true;
     setReadEligible(false);
 
@@ -61,6 +65,8 @@ export default function AdsterraPopunder({ nextClickCount }: AdsterraPopunderPro
   }, []);
 
   useEffect(() => {
+    if (isIosOrInAppBrowser()) return;
+
     const onNextChapterClick = (event: Event) => {
       const clickCount = event instanceof CustomEvent ? Number(event.detail?.clickCount || 0) : nextClickCount;
       tryLoadPopunder(clickCount);
@@ -70,6 +76,7 @@ export default function AdsterraPopunder({ nextClickCount }: AdsterraPopunderPro
   }, [nextClickCount, tryLoadPopunder]);
 
   useEffect(() => {
+    if (isIosOrInAppBrowser()) return;
     tryLoadPopunder();
   }, [tryLoadPopunder]);
 

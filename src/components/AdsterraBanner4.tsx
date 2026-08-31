@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { isMobileViewport } from "@/lib/adGuards";
 
 interface AdsterraBanner4Props {
   className?: string;
@@ -8,8 +9,15 @@ interface AdsterraBanner4Props {
 
 export default function AdsterraBanner4({ className = "" }: AdsterraBanner4Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [canLoadAd, setCanLoadAd] = useState(false);
 
   useEffect(() => {
+    if (isMobileViewport()) return;
+    setCanLoadAd(true);
+  }, []);
+
+  useEffect(() => {
+    if (!canLoadAd) return;
     if (!containerRef.current) return;
 
     containerRef.current.innerHTML = "";
@@ -33,7 +41,9 @@ export default function AdsterraBanner4({ className = "" }: AdsterraBanner4Props
 
     containerRef.current.appendChild(scriptOptions);
     containerRef.current.appendChild(scriptInvoke);
-  }, []);
+  }, [canLoadAd]);
+
+  if (!canLoadAd) return null;
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>

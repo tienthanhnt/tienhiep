@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
-import AdsterraBanner3 from "@/components/AdsterraBanner3";
 import AdsterraBanner4 from "@/components/AdsterraBanner4";
 import { formatCompactNumber } from "@/lib/format";
 import { getSiteUrl, SITE_NAME } from "@/lib/seo";
@@ -213,13 +212,10 @@ export default async function Home({
         />
       </Suspense>
 
-      {/* Bottom ad section: Medium Rectangle + Leaderboard */}
+      {/* Bottom ad section: Medium Rectangle */}
       <div className="flex flex-col items-center gap-4 my-4 w-full overflow-hidden">
         <div className="flex justify-center w-full">
           <AdsterraBanner4 />
-        </div>
-        <div className="flex justify-center w-full hidden md:flex">
-          <AdsterraBanner3 />
         </div>
       </div>
 

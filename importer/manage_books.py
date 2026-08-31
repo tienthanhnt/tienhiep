@@ -153,6 +153,30 @@ def wrap_cover_text(text: str, max_chars: int = 12, max_lines: int = 5) -> str:
     return "\n".join(lines)
 
 
+def wrap_cover_title_two_lines(text: str, max_chars: int = 12) -> str:
+    words = text.split()
+    if not words:
+        return "Chưa đặt tên"
+
+    if len(text) <= max_chars:
+        return text
+
+    best_split = 1
+    best_score = float("inf")
+    for index in range(1, len(words)):
+        first = " ".join(words[:index])
+        second = " ".join(words[index:])
+        overflow = max(0, len(first) - max_chars) + max(0, len(second) - max_chars)
+        balance = abs(len(first) - len(second))
+        score = overflow * 100 + balance
+        if score < best_score:
+            best_score = score
+            best_split = index
+
+    lines = [" ".join(words[:best_split]), " ".join(words[best_split:])]
+    return "\n".join(line if len(line) <= max_chars + 4 else line[:max_chars + 1].rstrip() + "..." for line in lines)
+
+
 def clean_cover_display_title(value: str) -> str:
     value = re.sub(r"[_-]+", " ", value or "")
     value = re.sub(r"\b\d+\s+\d+\b$", "", value)
@@ -300,12 +324,27 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         return None
 
     display_title = clean_cover_display_title(book_title)
-    title_text = wrap_cover_text(display_title, max_chars=10)
-    title_lines = title_text.count("\n") + 1
-    title_size = 39 if title_lines <= 2 else 34 if title_lines <= 4 else 29
+    title_text = wrap_cover_title_two_lines(display_title, max_chars=12)
+    title_size = 28 if "\n" in title_text else 31
     author_text = f"Tác giả: {author or 'Chưa rõ'}"
     title_font = find_cover_font(
         [
+            "UVN Thuphap",
+            "UVN But Long",
+            "VNI-Thuphap",
+            "VNI-ThuPhap",
+            "SVN-Black Mango",
+            "SVN-Dancing Script",
+            "Dancing Script",
+            "Great Vibes",
+            "Pacifico",
+            "Brush Script MT",
+            "DFKai-SB",
+            "KaiTi",
+            "KaiTi_GB2312",
+            "STKaiti",
+            "AR PL UKai CN",
+            "AR PL UKai TW",
             "Noto-Serif-CJK-SC-Bold",
             "Noto-Serif-CJK-TC-Bold",
             "Noto-Serif-CJK-JP-Bold",
@@ -315,11 +354,15 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
             "Source Han Serif CN",
             "SimSun",
             "KaiTi",
+            "Liberation-Serif-Bold-Italic",
+            "DejaVu-Serif-Bold-Italic",
         ],
-        "DejaVu-Serif-Bold",
+        "DejaVu-Serif-Bold-Italic",
     )
     detail_font = find_cover_font(
         [
+            "DejaVu-Serif-Italic",
+            "Liberation-Serif-Italic",
             "Noto-Serif-CJK-SC",
             "Noto-Serif-CJK-TC",
             "Noto Serif CJK SC",
@@ -328,7 +371,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
             "Source Han Serif SC",
             "DejaVu Serif",
         ],
-        "DejaVu-Serif",
+        "DejaVu-Serif-Italic",
     )
 
     temp = tempfile.NamedTemporaryFile(suffix=".webp", delete=False)
@@ -336,63 +379,69 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
     command = [
         converter,
         "-size", COVER_CANVAS_SIZE,
-        "gradient:#5b341f-#b68042",
-        "-fill", "#7a4828",
-        "-draw", "rectangle 18,18 302,462",
-        "-fill", "#a66b35",
-        "-draw", "rectangle 30,26 292,454",
-        "-fill", "#ead6ac",
-        "-stroke", "#7e512b",
-        "-strokewidth", "2",
-        "-draw", "rectangle 48,38 278,442",
-        "-fill", "#744225",
-        "-stroke", "#563018",
-        "-strokewidth", "1",
-        "-draw", "rectangle 34,28 58,452",
-        "-fill", "#00000018",
-        "-stroke", "none",
-        "-draw", "rectangle 58,38 66,442 rectangle 270,38 278,442",
-        "-fill", "none",
-        "-stroke", "#6a3d21",
+        "gradient:#efe0b7-#c9aa72",
+        "-fill", "#d0ad72",
+        "-draw", "rectangle 8,8 312,472",
+        "-fill", "#f2e7c6",
+        "-stroke", "#b38f55",
         "-strokewidth", "3",
-        "-draw", "line 42,58 42,422 line 54,58 54,422",
-        "-stroke", "#c6a16b66",
+        "-draw", "rectangle 30,26 290,454",
+        "-fill", "#f7edca",
+        "-stroke", "#d2bd83",
         "-strokewidth", "1",
-        "-draw", "line 76,70 250,70 line 76,410 250,410 line 84,82 242,82 line 84,398 242,398",
-        "-stroke", "#8c6a3a3f",
+        "-draw", "rectangle 42,38 278,442",
+        "-fill", "#d8bb7a44",
+        "-stroke", "none",
+        "-draw", "rectangle 42,330 278,442 circle 76,78 84,82 circle 238,118 246,126 circle 96,382 106,390 circle 244,356 252,366",
+        "-fill", "#9a6f3430",
+        "-draw", "path 'M 242 58 C 270 118, 250 184, 278 250 L 278 442 L 252 442 C 238 310, 266 198, 242 58 Z'",
+        "-fill", "#ffffff38",
+        "-draw", "path 'M 52 44 C 110 34, 184 42, 270 32 L 278 128 C 202 108, 124 122, 42 96 Z'",
+        "-fill", "none",
+        "-stroke", "#a4824b",
         "-strokewidth", "1",
-        "-draw", "path 'M 82 108 C 112 98, 134 112, 162 102 C 192 92, 220 104, 246 96' path 'M 78 372 C 116 356, 148 380, 188 362 C 218 350, 236 360, 254 352'",
-        "-fill", "#f7ecd4cc",
-        "-stroke", "#8a5a2f88",
-        "-strokewidth", "2",
-        "-draw", "roundrectangle 70,118 260,294 10,10",
-        "-fill", "#f3e2c2cc",
-        "-stroke", "#8a5a2f66",
-        "-strokewidth", "1",
-        "-draw", "roundrectangle 78,324 252,386 8,8",
+        "-draw", "line 110,96 210,96",
+        "-stroke", "#d1bd8a",
+        "-draw", "line 82,382 238,382",
         "(",
         "-background", "none",
-        "-fill", "#2b1a10",
+        "-fill", "#16110d",
+        "-stroke", "#16110d",
+        "-strokewidth", "0.35",
         "-font", title_font,
         "-pointsize", str(title_size),
         "-gravity", "center",
-        "-size", "174x150",
+        "-size", "248x100",
         f"caption:{title_text}",
         ")",
         "-gravity", "center",
-        "-geometry", "+16-52",
+        "-geometry", "+0-20",
         "-composite",
         "(",
         "-background", "none",
-        "-fill", "#5f3a22",
+        "-fill", "#241b12",
+        "-stroke", "none",
         "-font", detail_font,
         "-pointsize", "16",
         "-gravity", "center",
-        "-size", "160x54",
+        "-size", "230x34",
         f"caption:{author_text}",
         ")",
         "-gravity", "center",
-        "-geometry", "+16+122",
+        "-geometry", "+0+120",
+        "-composite",
+        "(",
+        "-background", "none",
+        "-fill", "#3d2e1e",
+        "-stroke", "none",
+        "-font", detail_font,
+        "-pointsize", "16",
+        "-gravity", "center",
+        "-size", "220x28",
+        "caption:Tiên Hiệp Lâu",
+        ")",
+        "-gravity", "center",
+        "-geometry", "+0+166",
         "-composite",
         "-resize", f"{COVER_SIZE}>",
         "-strip",

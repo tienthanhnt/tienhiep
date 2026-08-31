@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getChapterPath } from '@/lib/seo';
 
 interface Chapter {
@@ -22,19 +23,23 @@ interface ChapterListProps {
 const CHAPTERS_PER_PAGE = 100;
 const CHAPTER_PAGE_PARAM = 'chaptersPage';
 
-function updateChapterPageUrl(nextPage: number) {
-  const url = new URL(window.location.href);
+function getChapterPageHref(pathname: string, searchParams: URLSearchParams, nextPage: number) {
+  const params = new URLSearchParams(searchParams.toString());
 
   if (nextPage > 0) {
-    url.searchParams.set(CHAPTER_PAGE_PARAM, String(nextPage));
+    params.set(CHAPTER_PAGE_PARAM, String(nextPage));
   } else {
-    url.searchParams.delete(CHAPTER_PAGE_PARAM);
+    params.delete(CHAPTER_PAGE_PARAM);
   }
 
-  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  const queryString = params.toString();
+  return queryString ? `${pathname}?${queryString}` : pathname;
 }
 
 export default function ChapterList({ bookId, bookTitle, initialChapters, chapterCount, initialPage = 0 }: ChapterListProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const latestChapterNumber = chapterCount || initialChapters[initialChapters.length - 1]?.chapter_number || 1;
   const totalPages = Math.max(1, Math.ceil((chapterCount || initialChapters.length) / CHAPTERS_PER_PAGE));
   const [query, setQuery] = useState('');
@@ -85,10 +90,16 @@ export default function ChapterList({ bookId, bookTitle, initialChapters, chapte
   }, [bookId, chapterCache, page]);
 
   useEffect(() => {
-    if (!query.trim()) {
-      updateChapterPageUrl(page);
-    }
-  }, [page, query]);
+    if (query.trim()) return;
+
+    const currentPageParam = Math.max(0, Number(searchParams.get(CHAPTER_PAGE_PARAM) || "0") || 0);
+    const hasPageParam = searchParams.has(CHAPTER_PAGE_PARAM);
+    if (currentPageParam === page && (page > 0 || !hasPageParam)) return;
+
+    router.replace(getChapterPageHref(pathname, new URLSearchParams(searchParams.toString()), page), {
+      scroll: false,
+    });
+  }, [page, pathname, query, router, searchParams]);
 
   useEffect(() => {
     const keyword = query.trim();
