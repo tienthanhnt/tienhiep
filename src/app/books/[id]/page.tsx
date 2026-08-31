@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
 import AdsterraBanner from '@/components/AdsterraBanner';
+import BookComments from '@/components/BookComments';
 import { formatCompactNumber } from '@/lib/format';
 import { resolveBookId } from '@/lib/books';
 import { buildBookDescription, getBookPath, getChapterPath, getSiteUrl, SITE_NAME } from '@/lib/seo';
@@ -237,6 +238,8 @@ export default async function BookDetailPage({
         chapterCount={book.chapter_count || chapters.length}
         initialPage={initialChapterPage}
       />
+
+      <BookComments bookId={book.id} />
 
       <AdsterraBanner />
     </div>

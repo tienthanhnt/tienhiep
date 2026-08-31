@@ -1,7 +1,12 @@
 import sys
 import os
+import posixpath
 import re
+import tempfile
 import unicodedata
+import warnings
+import zipfile
+import xml.etree.ElementTree as ET
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
@@ -34,6 +39,132 @@ def translated_folder_name(title: str) -> str:
 
 def natural_sort_key(value: str):
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r'(\d+)', value)]
+
+
+def read_epub_quiet(epub_path: str):
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="ebooklib.epub")
+        warnings.filterwarnings("ignore", category=FutureWarning, module="ebooklib.epub")
+        return epub.read_epub(epub_path, options={"ignore_ncx": True})
+
+
+def read_epub_resilient(epub_path: str):
+    try:
+        return read_epub_quiet(epub_path)
+    except KeyError as error:
+        message = str(error)
+        missing_match = re.search(r"There is no item named '([^']+)'", message)
+        missing_name = missing_match.group(1) if missing_match else message.strip("'\"")
+
+        repaired_path = create_epub_without_missing_manifest_items(epub_path)
+        if not repaired_path:
+            raise
+
+        print(f"⚠️  EPUB thiếu file '{missing_name}'. Đang đọc bằng bản tạm đã bỏ reference hỏng.")
+        try:
+            return read_epub_quiet(repaired_path)
+        finally:
+            try:
+                os.remove(repaired_path)
+            except OSError:
+                pass
+
+
+def get_opf_path(epub_zip: zipfile.ZipFile) -> str | None:
+    try:
+        container_xml = epub_zip.read("META-INF/container.xml")
+    except KeyError:
+        return None
+
+    root = ET.fromstring(container_xml)
+    namespace = {"container": "urn:oasis:names:tc:opendocument:xmlns:container"}
+    rootfile = root.find(".//container:rootfile[@media-type]", namespace)
+    if rootfile is None:
+        rootfile = root.find(".//container:rootfile", namespace)
+
+    return rootfile.get("full-path") if rootfile is not None else None
+
+
+def resolve_epub_href(opf_path: str, href: str) -> str:
+    opf_dir = posixpath.dirname(opf_path)
+    return posixpath.normpath(posixpath.join(opf_dir, href)).lstrip("./")
+
+
+def create_epub_without_missing_manifest_items(epub_path: str) -> str | None:
+    try:
+        source_zip = zipfile.ZipFile(epub_path, "r")
+    except zipfile.BadZipFile:
+        return None
+
+    with source_zip:
+        opf_path = get_opf_path(source_zip)
+        if not opf_path:
+            return None
+
+        try:
+            opf_xml = source_zip.read(opf_path)
+        except KeyError:
+            return None
+
+        existing_names = set(source_zip.namelist())
+        root = ET.fromstring(opf_xml)
+        ns_match = re.match(r"^\{(.+)\}", root.tag)
+        namespace_uri = ns_match.group(1) if ns_match else ""
+        ns = {"opf": namespace_uri} if namespace_uri else {}
+        prefix = "opf:" if namespace_uri else ""
+        manifest = root.find(f"{prefix}manifest", ns)
+
+        if manifest is None:
+            return None
+
+        removed_ids = set()
+        for item in list(manifest):
+            href = item.get("href")
+            item_id = item.get("id")
+            if not href or not item_id:
+                continue
+
+            item_path = resolve_epub_href(opf_path, href.split("#", 1)[0])
+            if item_path not in existing_names:
+                manifest.remove(item)
+                removed_ids.add(item_id)
+
+        if not removed_ids:
+            return None
+
+        spine = root.find(f"{prefix}spine", ns)
+        if spine is not None:
+            for itemref in list(spine):
+                if itemref.get("idref") in removed_ids:
+                    spine.remove(itemref)
+
+        guide = root.find(f"{prefix}guide", ns)
+        if guide is not None:
+            for reference in list(guide):
+                href = reference.get("href", "").split("#", 1)[0]
+                if href and resolve_epub_href(opf_path, href) not in existing_names:
+                    guide.remove(reference)
+
+        repaired = tempfile.NamedTemporaryFile(suffix=".epub", delete=False)
+        repaired_path = repaired.name
+        repaired.close()
+
+        ET.register_namespace("", namespace_uri) if namespace_uri else None
+        repaired_opf = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+        with zipfile.ZipFile(repaired_path, "w") as target_zip:
+            if "mimetype" in existing_names:
+                target_zip.writestr("mimetype", source_zip.read("mimetype"), compress_type=zipfile.ZIP_STORED)
+
+            for item in source_zip.infolist():
+                if item.filename == "mimetype":
+                    continue
+                if item.filename == opf_path:
+                    target_zip.writestr(item, repaired_opf)
+                else:
+                    target_zip.writestr(item, source_zip.read(item.filename))
+
+        return repaired_path
 
 
 def is_skippable_title(title: str) -> bool:
@@ -241,7 +372,7 @@ def extract_chapter_sections(soup: BeautifulSoup, fallback_title: str):
 def convert_to_chapters(epub_path: str, output_dir: str):
     print(f"📖 Đang đọc file: {epub_path}")
     try:
-        book = epub.read_epub(epub_path)
+        book = read_epub_resilient(epub_path)
     except Exception as e:
         print(f"❌ Không thể đọc file Epub: {e}")
         return None

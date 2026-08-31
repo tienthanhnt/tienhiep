@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
 import AdsterraNativeBanner from './AdsterraNativeBanner';
 import AdsterraPopunder, { NEXT_CHAPTER_EVENT } from './AdsterraPopunder';
+import BookComments from './BookComments';
 import { getBookPath, getChapterPath } from '@/lib/seo';
 
 interface ChapterReaderProps {
@@ -634,6 +635,13 @@ export default function ChapterReader({
 
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →', recordNextChapterClick)}
       </div>
+
+      <BookComments
+        bookId={bookId}
+        chapterNumber={chapterNumber}
+        showList={false}
+        compact
+      />
 
       {/* Native Banner Positioned at bottom */}
       <AdsterraNativeBanner className="my-2" />
