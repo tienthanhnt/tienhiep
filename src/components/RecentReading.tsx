@@ -37,8 +37,8 @@ export default function RecentReading() {
 
   return (
     <section className="max-w-lg">
-      <div className="mb-1 flex items-center gap-2 border-l-2 border-[#B99654] pl-2">
-        <h2 className="text-[11px] font-bold tracking-wide text-[#26211C]">
+      <div className="mb-1.5 flex items-center gap-2 border-l-2 border-[#B99654] pl-2">
+        <h2 className="text-xs font-bold tracking-wide text-[#26211C]">
           Đang đọc gần đây
         </h2>
       </div>
@@ -48,17 +48,17 @@ export default function RecentReading() {
           <Link
             key={`${item.bookId}-${item.chapterNumber}`}
             href={getChapterPath({ id: item.bookId, title: item.bookTitle }, item.chapterNumber)}
-            className="block rounded border border-[#DDD5C8] bg-[#FBFAF7]/65 px-2 py-1 shadow-[0_2px_8px_rgba(66,52,35,0.03)] transition-all hover:border-[#B99654]/70 hover:bg-[#F4EFE6]"
+            className="block rounded border border-[#D4A84F]/55 bg-[#FFF5D9]/85 px-2.5 py-1.5 shadow-[0_3px_10px_rgba(122,91,30,0.08)] transition-all hover:border-[#B99654] hover:bg-[#F8E8B9]"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[10px] font-semibold text-[#2C2825]">
+              <span className="truncate text-xs font-bold leading-5 text-[#2C2825]">
                 {item.bookTitle}
               </span>
-              <span className="shrink-0 rounded bg-[#E8E0D2] px-1.5 py-0.5 text-[8px] font-semibold text-[#5C5449]">
+              <span className="shrink-0 rounded bg-[#2C2825] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
                 Chương {item.chapterNumber}
               </span>
             </div>
-            <p className="mt-0.5 truncate text-[9px] text-[#7A7365]">
+            <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6B4F1D]">
               {item.chapterTitle}
             </p>
           </Link>

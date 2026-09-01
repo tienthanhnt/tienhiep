@@ -61,8 +61,8 @@ DEFAULT_COVER = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=
 UPLOADABLE_DIR_SUFFIX = "_Translated"
 COVER_CACHE_CONTROL = "86400"
 CHAPTER_CACHE_CONTROL = "86400"
-COVER_CANVAS_SIZE = "320x480"
-COVER_SIZE = "240x360"
+COVER_CANVAS_SIZE = "320x440"
+COVER_SIZE = "240x330"
 COVER_QUALITY = "46"
 
 
@@ -153,28 +153,104 @@ def wrap_cover_text(text: str, max_chars: int = 12, max_lines: int = 5) -> str:
     return "\n".join(lines)
 
 
-def wrap_cover_title_two_lines(text: str, max_chars: int = 12) -> str:
+def split_long_cover_word(word: str, max_chars: int) -> list[str]:
+    return [word[index:index + max_chars] for index in range(0, len(word), max_chars)]
+
+
+def wrap_cover_title(text: str, max_chars: int = 12, max_lines: int = 6) -> str:
     words = text.split()
     if not words:
         return "Chưa đặt tên"
 
-    if len(text) <= max_chars:
+    if len(words) <= 3 and len(text) <= max_chars + 6:
         return text
 
-    best_split = 1
-    best_score = float("inf")
-    for index in range(1, len(words)):
-        first = " ".join(words[:index])
-        second = " ".join(words[index:])
-        overflow = max(0, len(first) - max_chars) + max(0, len(second) - max_chars)
-        balance = abs(len(first) - len(second))
-        score = overflow * 100 + balance
-        if score < best_score:
-            best_score = score
-            best_split = index
+    if len(words) <= 3:
+        target_lines = 1
+    elif len(words) <= 6:
+        target_lines = 2
+    elif len(words) <= 9:
+        target_lines = 3
+    elif len(words) <= 12:
+        target_lines = 4
+    else:
+        target_lines = max_lines
 
-    lines = [" ".join(words[:best_split]), " ".join(words[best_split:])]
-    return "\n".join(line if len(line) <= max_chars + 4 else line[:max_chars + 1].rstrip() + "..." for line in lines)
+    target_lines = min(target_lines, max_lines)
+    expanded_words = []
+    for word in words:
+        expanded_words.extend(split_long_cover_word(word, max_chars) if len(word) > max_chars + 4 else [word])
+
+    target_chars = max(
+        max_chars,
+        (sum(len(word) for word in expanded_words) + max(0, len(expanded_words) - 1) + target_lines - 1) // target_lines,
+    )
+    lines = []
+    current = ""
+
+    for index, word in enumerate(expanded_words):
+        next_line = f"{current} {word}".strip()
+        remaining_words = len(expanded_words) - index
+        remaining_lines = target_lines - len(lines) - 1
+        should_wrap = (
+            current
+            and len(next_line) > target_chars
+            and len(lines) < target_lines - 1
+            and remaining_words > remaining_lines
+        )
+
+        if should_wrap:
+            lines.append(current)
+            current = word
+        else:
+            current = next_line
+
+    if current:
+        lines.append(current)
+
+    while len(lines) < target_lines:
+        longest_index = max(range(len(lines)), key=lambda index: len(lines[index]))
+        line_words = lines[longest_index].split()
+        if len(line_words) <= 1:
+            break
+        split_at = max(1, len(line_words) // 2)
+        lines[longest_index:longest_index + 1] = [
+            " ".join(line_words[:split_at]),
+            " ".join(line_words[split_at:]),
+        ]
+
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(".") + "..."
+
+    return "\n".join(lines)
+
+
+def get_cover_title_size(title_text: str) -> int:
+    lines = title_text.splitlines() or [title_text]
+    line_count = len(lines)
+    longest_line = max(len(line) for line in lines)
+    base_size_by_lines = {
+        1: 28,
+        2: 25,
+        3: 22,
+        4: 19,
+        5: 17,
+        6: 15,
+    }
+    size = base_size_by_lines.get(line_count, 15)
+    if longest_line > 14:
+        size -= min(5, (longest_line - 14 + 1) // 2)
+    return max(13, size)
+
+
+def get_cover_author_size(author_text: str) -> int:
+    lines = author_text.splitlines() or [author_text]
+    longest_line = max(len(line) for line in lines)
+    size = 16 if len(lines) == 1 else 14
+    if longest_line > 20:
+        size -= min(3, (longest_line - 20 + 2) // 3)
+    return max(13, size)
 
 
 def clean_cover_display_title(value: str) -> str:
@@ -324,9 +400,10 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         return None
 
     display_title = clean_cover_display_title(book_title)
-    title_text = wrap_cover_title_two_lines(display_title, max_chars=12)
-    title_size = 28 if "\n" in title_text else 31
-    author_text = f"Tác giả: {author or 'Chưa rõ'}"
+    title_text = wrap_cover_title(display_title, max_chars=12, max_lines=6)
+    title_size = get_cover_title_size(title_text)
+    author_text = wrap_cover_text(f"Tác giả: {author or 'Chưa rõ'}", max_chars=20, max_lines=3)
+    author_size = get_cover_author_size(author_text)
     title_font = find_cover_font(
         [
             "UVN Thuphap",
@@ -379,30 +456,18 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
     command = [
         converter,
         "-size", COVER_CANVAS_SIZE,
-        "gradient:#efe0b7-#c9aa72",
-        "-fill", "#d0ad72",
-        "-draw", "rectangle 8,8 312,472",
-        "-fill", "#f2e7c6",
-        "-stroke", "#b38f55",
-        "-strokewidth", "3",
-        "-draw", "rectangle 30,26 290,454",
-        "-fill", "#f7edca",
-        "-stroke", "#d2bd83",
-        "-strokewidth", "1",
-        "-draw", "rectangle 42,38 278,442",
-        "-fill", "#d8bb7a44",
+        "radial-gradient:#fbf2d6-#c4a064",
+        "(",
+        "-size", COVER_CANVAS_SIZE,
+        "xc:none",
+        "-fill", "#fff7df85",
+        "-draw", "ellipse 160,212 108,156 0,360",
+        "-blur", "0x26",
+        ")",
+        "-composite",
+        "-fill", "#d8bb7a30",
         "-stroke", "none",
-        "-draw", "rectangle 42,330 278,442 circle 76,78 84,82 circle 238,118 246,126 circle 96,382 106,390 circle 244,356 252,366",
-        "-fill", "#9a6f3430",
-        "-draw", "path 'M 242 58 C 270 118, 250 184, 278 250 L 278 442 L 252 442 C 238 310, 266 198, 242 58 Z'",
-        "-fill", "#ffffff38",
-        "-draw", "path 'M 52 44 C 110 34, 184 42, 270 32 L 278 128 C 202 108, 124 122, 42 96 Z'",
-        "-fill", "none",
-        "-stroke", "#a4824b",
-        "-strokewidth", "1",
-        "-draw", "line 110,96 210,96",
-        "-stroke", "#d1bd8a",
-        "-draw", "line 82,382 238,382",
+        "-draw", "rectangle 50,320 270,408",
         "(",
         "-background", "none",
         "-fill", "#16110d",
@@ -411,24 +476,24 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         "-font", title_font,
         "-pointsize", str(title_size),
         "-gravity", "center",
-        "-size", "248x100",
+        "-size", "248x207",
         f"caption:{title_text}",
         ")",
         "-gravity", "center",
-        "-geometry", "+0-20",
+        "-geometry", "+0-32",
         "-composite",
         "(",
         "-background", "none",
         "-fill", "#241b12",
         "-stroke", "none",
         "-font", detail_font,
-        "-pointsize", "16",
+        "-pointsize", str(author_size),
         "-gravity", "center",
-        "-size", "230x34",
+        "-size", "230x64",
         f"caption:{author_text}",
         ")",
         "-gravity", "center",
-        "-geometry", "+0+120",
+        "-geometry", "+0+116",
         "-composite",
         "(",
         "-background", "none",
@@ -441,7 +506,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         "caption:Tiên Hiệp Lâu",
         ")",
         "-gravity", "center",
-        "-geometry", "+0+166",
+        "-geometry", "+0-180",
         "-composite",
         "-resize", f"{COVER_SIZE}>",
         "-strip",
@@ -662,6 +727,27 @@ def delete_book_content_files(book_id: int):
         print(f"⚠️  Không dọn được thư mục nội dung Storage của book ID={book_id}: {e}")
 
 
+def delete_chapters_by_book_id(book_id: int, batch_size: int = 50) -> int:
+    """Xóa chapters theo batch nhỏ để tránh Postgres statement timeout."""
+    total_deleted = 0
+
+    while True:
+        res = supabase.table("chapters") \
+            .select("id") \
+            .eq("book_id", book_id) \
+            .order("id") \
+            .limit(batch_size) \
+            .execute()
+
+        ids = [row["id"] for row in (res.data or []) if row.get("id") is not None]
+        if not ids:
+            return total_deleted
+
+        supabase.table("chapters").delete().in_("id", ids).execute()
+        total_deleted += len(ids)
+        print(f"   🧹 Đã xóa {total_deleted} chương khỏi DB...")
+
+
 def upload_all_chapters(book_id: int, translated_dir: str):
     """Upload toàn bộ chương từ thư mục vào DB (không kiểm tra trùng)."""
     validate_content_storage_setup()
@@ -747,7 +833,7 @@ def cmd_delete_book(title: str, confirm: bool = False):
 
     delete_book_content_files(book["id"])
     # Xóa chương trước
-    supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
+    delete_chapters_by_book_id(book["id"])
     # Xóa truyện
     supabase.table("books").delete().eq("id", book["id"]).execute()
     print(f"🗑️  Đã xóa truyện '{book['title']}' và toàn bộ chương.")
@@ -794,7 +880,7 @@ def cmd_delete_books_under_chapters(max_chapters: int, confirm: bool = False, sk
         book_id = book["id"]
         if not skip_storage:
             delete_book_content_files(book_id)
-        supabase.table("chapters").delete().eq("book_id", book_id).execute()
+        delete_chapters_by_book_id(book_id)
         supabase.table("books").delete().eq("id", book_id).execute()
         deleted += 1
         print(f"   🗑️  [{book_id}] {book['title']} ({book.get('chapter_count') or 0} chương)")
@@ -896,7 +982,7 @@ def cmd_delete_chapters(title: str, confirm: bool = False):
             return
 
     delete_book_content_files(book["id"])
-    supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
+    delete_chapters_by_book_id(book["id"])
     supabase.table("books").update({"chapter_count": 0}).eq("id", book["id"]).execute()
     print(f"🗑️  Đã xóa toàn bộ chương. Thông tin truyện vẫn còn trong DB.")
 
@@ -922,7 +1008,7 @@ def cmd_resync(translated_dir: str, force: bool = False):
                 return
         # Xóa tất cả chương cũ
         delete_book_content_files(book["id"])
-        supabase.table("chapters").delete().eq("book_id", book["id"]).execute()
+        delete_chapters_by_book_id(book["id"])
         update_data = {
             "chapter_count": 0,
             "author": book_info["author"],

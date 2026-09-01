@@ -9,35 +9,7 @@ import { redirect } from "next/navigation";
 export const revalidate = 1800;
 const BOOKS_PER_PAGE = 20;
 const SITE_DESCRIPTION = "Đọc truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên dịch full tiếng Việt miễn phí, cập nhật chương mới mỗi ngày.";
-
-const MOCK_BOOKS = [
-  {
-    id: 101,
-    title: "Tuyệt Thế Dược Thần",
-    author: "Hoa Tiên Tửu",
-    chapterCount: 4993,
-    rating: 7.9,
-    status: "Đang ra" as const,
-    coverUrl: "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-    genres: "",
-    sourceType: "",
-    viewCount: 0,
-    ranking: null,
-  },
-  {
-    id: 102,
-    title: "Độc Tôn Truyền Kỳ",
-    author: "Lâm Nhất",
-    chapterCount: 7077,
-    rating: 7.9,
-    status: "Đang ra" as const,
-    coverUrl: "https://images.unsplash.com/photo-1618666012174-83b441c0bc76?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-    genres: "",
-    sourceType: "",
-    viewCount: 0,
-    ranking: null,
-  },
-];
+const DEFAULT_COVER_URL = "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80";
 
 interface SupabaseBook {
   id: number;
@@ -75,7 +47,7 @@ function mapBook(b: SupabaseBook): BookItem {
     chapterCount: b.chapter_count || 0,
     rating: b.rating || 8.0,
     status: (b.status || "Đang ra") as 'Đang ra' | 'Hoàn thành',
-    coverUrl: b.cover_url || MOCK_BOOKS[0].coverUrl,
+    coverUrl: b.cover_url || DEFAULT_COVER_URL,
     genres: b.genres || "",
     sourceType: b.source_type || "",
     viewCount: b.view_count || 0,
@@ -142,12 +114,11 @@ export default async function Home({
     getSearchBooks(),
   ]);
 
-  const books = dbBooks.length > 0
-    ? dbBooks.map(mapBook)
-    : MOCK_BOOKS;
+  const books = dbBooks.map(mapBook);
   const searchBooks = searchDbBooks.length > 0 ? searchDbBooks.map(mapBook) : books;
   const totalViewCount = searchBooks.reduce((sum, book) => sum + (book.viewCount || 0), 0);
-  const totalPages = Math.max(1, Math.ceil((totalCount || books.length) / BOOKS_PER_PAGE));
+  const effectiveTotalCount = totalCount || books.length;
+  const totalPages = Math.max(1, Math.ceil(effectiveTotalCount / BOOKS_PER_PAGE));
 
   if (totalCount > 0 && requestedPage > totalPages) {
     redirect(totalPages === 1 ? "/" : `/?page=${totalPages}`);
@@ -169,7 +140,7 @@ export default async function Home({
     url: siteUrl,
     inLanguage: "vi",
     description: "Danh sách truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt.",
-    numberOfItems: totalCount || books.length,
+    numberOfItems: effectiveTotalCount,
   };
 
   return (
@@ -207,7 +178,7 @@ export default async function Home({
           searchBooks={searchBooks}
           currentPage={requestedPage}
           totalPages={totalPages}
-          totalCount={totalCount || books.length}
+          totalCount={effectiveTotalCount}
           pageSize={BOOKS_PER_PAGE}
         />
       </Suspense>

@@ -96,7 +96,7 @@ BEGIN
     FROM book_comments c
     WHERE c.book_id = target_book_id
       AND c.visitor_hash = target_visitor_hash
-      AND c.created_at > TIMEZONE('utc'::text, NOW()) - INTERVAL '10 minutes'
+      AND c.created_at > TIMEZONE('utc'::text, NOW()) - INTERVAL '30 minutes'
     LIMIT 1
   ) THEN
     RAISE EXCEPTION 'COMMENT_BOOK_COOLDOWN';

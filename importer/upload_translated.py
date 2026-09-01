@@ -34,8 +34,8 @@ EXISTING_CHAPTER_PAGE_SIZE = 1000
 UPLOAD_RETRY_COUNT = 3
 COVER_CACHE_CONTROL = "86400"
 CHAPTER_CACHE_CONTROL = "86400"
-COVER_CANVAS_SIZE = "320x480"
-COVER_SIZE = "240x360"
+COVER_CANVAS_SIZE = "320x440"
+COVER_SIZE = "240x330"
 COVER_QUALITY = "46"
 
 
@@ -129,28 +129,104 @@ def wrap_cover_text(text: str, max_chars: int = 12, max_lines: int = 5) -> str:
     return "\n".join(lines)
 
 
-def wrap_cover_title_two_lines(text: str, max_chars: int = 12) -> str:
+def split_long_cover_word(word: str, max_chars: int) -> list[str]:
+    return [word[index:index + max_chars] for index in range(0, len(word), max_chars)]
+
+
+def wrap_cover_title(text: str, max_chars: int = 12, max_lines: int = 6) -> str:
     words = text.split()
     if not words:
         return "Chưa đặt tên"
 
-    if len(text) <= max_chars:
+    if len(words) <= 3 and len(text) <= max_chars + 6:
         return text
 
-    best_split = 1
-    best_score = float("inf")
-    for index in range(1, len(words)):
-        first = " ".join(words[:index])
-        second = " ".join(words[index:])
-        overflow = max(0, len(first) - max_chars) + max(0, len(second) - max_chars)
-        balance = abs(len(first) - len(second))
-        score = overflow * 100 + balance
-        if score < best_score:
-            best_score = score
-            best_split = index
+    if len(words) <= 3:
+        target_lines = 1
+    elif len(words) <= 6:
+        target_lines = 2
+    elif len(words) <= 9:
+        target_lines = 3
+    elif len(words) <= 12:
+        target_lines = 4
+    else:
+        target_lines = max_lines
 
-    lines = [" ".join(words[:best_split]), " ".join(words[best_split:])]
-    return "\n".join(line if len(line) <= max_chars + 4 else line[:max_chars + 1].rstrip() + "..." for line in lines)
+    target_lines = min(target_lines, max_lines)
+    expanded_words = []
+    for word in words:
+        expanded_words.extend(split_long_cover_word(word, max_chars) if len(word) > max_chars + 4 else [word])
+
+    target_chars = max(
+        max_chars,
+        (sum(len(word) for word in expanded_words) + max(0, len(expanded_words) - 1) + target_lines - 1) // target_lines,
+    )
+    lines = []
+    current = ""
+
+    for index, word in enumerate(expanded_words):
+        next_line = f"{current} {word}".strip()
+        remaining_words = len(expanded_words) - index
+        remaining_lines = target_lines - len(lines) - 1
+        should_wrap = (
+            current
+            and len(next_line) > target_chars
+            and len(lines) < target_lines - 1
+            and remaining_words > remaining_lines
+        )
+
+        if should_wrap:
+            lines.append(current)
+            current = word
+        else:
+            current = next_line
+
+    if current:
+        lines.append(current)
+
+    while len(lines) < target_lines:
+        longest_index = max(range(len(lines)), key=lambda index: len(lines[index]))
+        line_words = lines[longest_index].split()
+        if len(line_words) <= 1:
+            break
+        split_at = max(1, len(line_words) // 2)
+        lines[longest_index:longest_index + 1] = [
+            " ".join(line_words[:split_at]),
+            " ".join(line_words[split_at:]),
+        ]
+
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(".") + "..."
+
+    return "\n".join(lines)
+
+
+def get_cover_title_size(title_text: str) -> int:
+    lines = title_text.splitlines() or [title_text]
+    line_count = len(lines)
+    longest_line = max(len(line) for line in lines)
+    base_size_by_lines = {
+        1: 28,
+        2: 25,
+        3: 22,
+        4: 19,
+        5: 17,
+        6: 15,
+    }
+    size = base_size_by_lines.get(line_count, 15)
+    if longest_line > 14:
+        size -= min(5, (longest_line - 14 + 1) // 2)
+    return max(13, size)
+
+
+def get_cover_author_size(author_text: str) -> int:
+    lines = author_text.splitlines() or [author_text]
+    longest_line = max(len(line) for line in lines)
+    size = 16 if len(lines) == 1 else 14
+    if longest_line > 20:
+        size -= min(3, (longest_line - 20 + 2) // 3)
+    return max(13, size)
 
 
 def clean_cover_display_title(value: str) -> str:
@@ -300,9 +376,10 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         return None
 
     display_title = clean_cover_display_title(book_title)
-    title_text = wrap_cover_title_two_lines(display_title, max_chars=12)
-    title_size = 28 if "\n" in title_text else 31
-    author_text = f"Tác giả: {author or 'Chưa rõ'}"
+    title_text = wrap_cover_title(display_title, max_chars=12, max_lines=6)
+    title_size = get_cover_title_size(title_text)
+    author_text = wrap_cover_text(f"Tác giả: {author or 'Chưa rõ'}", max_chars=20, max_lines=3)
+    author_size = get_cover_author_size(author_text)
     title_font = find_cover_font(
         [
             "UVN Thuphap",
@@ -355,30 +432,18 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
     command = [
         converter,
         "-size", COVER_CANVAS_SIZE,
-        "gradient:#efe0b7-#c9aa72",
-        "-fill", "#d0ad72",
-        "-draw", "rectangle 8,8 312,472",
-        "-fill", "#f2e7c6",
-        "-stroke", "#b38f55",
-        "-strokewidth", "3",
-        "-draw", "rectangle 30,26 290,454",
-        "-fill", "#f7edca",
-        "-stroke", "#d2bd83",
-        "-strokewidth", "1",
-        "-draw", "rectangle 42,38 278,442",
-        "-fill", "#d8bb7a44",
+        "radial-gradient:#fbf2d6-#c4a064",
+        "(",
+        "-size", COVER_CANVAS_SIZE,
+        "xc:none",
+        "-fill", "#fff7df85",
+        "-draw", "ellipse 160,212 108,156 0,360",
+        "-blur", "0x26",
+        ")",
+        "-composite",
+        "-fill", "#d8bb7a30",
         "-stroke", "none",
-        "-draw", "rectangle 42,330 278,442 circle 76,78 84,82 circle 238,118 246,126 circle 96,382 106,390 circle 244,356 252,366",
-        "-fill", "#9a6f3430",
-        "-draw", "path 'M 242 58 C 270 118, 250 184, 278 250 L 278 442 L 252 442 C 238 310, 266 198, 242 58 Z'",
-        "-fill", "#ffffff38",
-        "-draw", "path 'M 52 44 C 110 34, 184 42, 270 32 L 278 128 C 202 108, 124 122, 42 96 Z'",
-        "-fill", "none",
-        "-stroke", "#a4824b",
-        "-strokewidth", "1",
-        "-draw", "line 110,96 210,96",
-        "-stroke", "#d1bd8a",
-        "-draw", "line 82,382 238,382",
+        "-draw", "rectangle 50,320 270,408",
         "(",
         "-background", "none",
         "-fill", "#16110d",
@@ -387,24 +452,24 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         "-font", title_font,
         "-pointsize", str(title_size),
         "-gravity", "center",
-        "-size", "248x100",
+        "-size", "248x207",
         f"caption:{title_text}",
         ")",
         "-gravity", "center",
-        "-geometry", "+0-20",
+        "-geometry", "+0-32",
         "-composite",
         "(",
         "-background", "none",
         "-fill", "#241b12",
         "-stroke", "none",
         "-font", detail_font,
-        "-pointsize", "16",
+        "-pointsize", str(author_size),
         "-gravity", "center",
-        "-size", "230x34",
+        "-size", "230x64",
         f"caption:{author_text}",
         ")",
         "-gravity", "center",
-        "-geometry", "+0+120",
+        "-geometry", "+0+116",
         "-composite",
         "(",
         "-background", "none",
@@ -417,7 +482,7 @@ def create_generated_cover(book_title: str, author: str) -> tuple[str, str, str]
         "caption:Tiên Hiệp Lâu",
         ")",
         "-gravity", "center",
-        "-geometry", "+0+166",
+        "-geometry", "+0-180",
         "-composite",
         "-resize", f"{COVER_SIZE}>",
         "-strip",
@@ -537,10 +602,17 @@ def upload_cover_image(translated_dir: str, book_title: str, author: str = "Chư
                 pass
 
 
-def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str, html_content: str) -> tuple[str, str]:
+def upload_chapter_content(
+    book_id: int,
+    chapter_number: int,
+    chapter_title: str,
+    html_content: str,
+    version_suffix: str | None = None,
+) -> tuple[str, str]:
     """Upload nội dung chương lên Storage. Trả về (content_path, public_url)."""
     safe_title = safe_storage_name(chapter_title)
-    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}.html.gz"
+    suffix = f"_{version_suffix}" if version_suffix else ""
+    content_path = f"{book_id}/{chapter_number:04d}_{safe_title}{suffix}.html.gz"
 
     compressed_html = gzip.compress(html_content.encode("utf-8"), compresslevel=9)
     last_error = None
@@ -557,7 +629,8 @@ def upload_chapter_content(book_id: int, chapter_number: int, chapter_title: str
                 compressed_html,
                 {
                     "content-type": "application/gzip",
-                    "cache-control": CHAPTER_CACHE_CONTROL
+                    "cache-control": CHAPTER_CACHE_CONTROL,
+                    "upsert": "true"
                 }
             )
             public_url = supabase.storage.from_(CONTENT_STORAGE_BUCKET).get_public_url(content_path)
@@ -697,6 +770,125 @@ def get_existing_chapter_numbers(book_id: int) -> set[int]:
         start += EXISTING_CHAPTER_PAGE_SIZE
 
     return chapter_numbers
+
+
+def find_chapter_file(translated_dir: str, chapter_number: int, chapter_file: str | None = None) -> str | None:
+    if chapter_file:
+        file_path = chapter_file
+        if not os.path.isabs(file_path) and not os.path.isfile(file_path):
+            file_path = os.path.join(translated_dir, file_path)
+        return file_path if os.path.isfile(file_path) else None
+
+    prefix = f"{chapter_number:04d}_"
+    matches = sorted(
+        filename
+        for filename in os.listdir(translated_dir)
+        if filename.endswith(".md") and filename.startswith(prefix)
+    )
+    if not matches:
+        return None
+
+    return os.path.join(translated_dir, matches[0])
+
+
+def parse_chapter_markdown(file_path: str, chapter_number: int) -> tuple[str, str]:
+    with open(file_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+
+    title_match = re.search(r"^#\s+(.+)$", md_content, flags=re.MULTILINE)
+    chapter_title = title_match.group(1).strip() if title_match else f"Chương {chapter_number}"
+    html_content = markdown.markdown(md_content)
+    return chapter_title, html_content
+
+
+def remove_content_paths(paths: list[str | None]):
+    removable_paths = [path for path in paths if path]
+    if not removable_paths:
+        return
+
+    try:
+        supabase.storage.from_(CONTENT_STORAGE_BUCKET).remove(removable_paths)
+    except Exception as e:
+        print(f"⚠️  Không xóa được file content cũ trên Storage: {e}")
+
+
+def force_update_chapter(translated_dir: str, chapter_number: int, chapter_file: str | None = None):
+    print(f"🔁 Force update chương {chapter_number} từ: {translated_dir}")
+
+    if not os.path.isdir(translated_dir):
+        print(f"❌ Không tìm thấy thư mục: {translated_dir}")
+        return
+
+    if chapter_number <= 0:
+        print("❌ Số chương phải lớn hơn 0.")
+        return
+
+    file_path = find_chapter_file(translated_dir, chapter_number, chapter_file)
+    if not file_path:
+        print(f"❌ Không tìm thấy file .md cho chương {chapter_number}.")
+        print(f"   Mặc định tool tìm file bắt đầu bằng: {chapter_number:04d}_")
+        print("   Nếu muốn dùng file khác, truyền thêm --force-chapter-file <file.md>")
+        return
+
+    validate_content_storage_setup()
+    book_info = read_book_info(translated_dir)
+    existing_book = get_existing_book(book_info["title"])
+    if not existing_book:
+        print(f"❌ Truyện '{book_info['title']}' chưa có trên DB. Hãy upload truyện trước khi force update chương.")
+        return
+
+    book_id = existing_book["id"]
+    chapter_title, html_content = parse_chapter_markdown(file_path, chapter_number)
+    content_hash = hashlib.sha1(html_content.encode("utf-8")).hexdigest()[:10]
+    version_suffix = f"v{content_hash}"
+
+    res = (
+        supabase.table("chapters")
+        .select("id, content_path")
+        .eq("book_id", book_id)
+        .eq("chapter_number", chapter_number)
+        .execute()
+    )
+    old_chapters = res.data or []
+
+    content_path, content_url = upload_chapter_content(
+        book_id,
+        chapter_number,
+        chapter_title,
+        html_content,
+        version_suffix=version_suffix,
+    )
+
+    if old_chapters:
+        chapter_id = old_chapters[0]["id"]
+        supabase.table("chapters").update({
+            "title": chapter_title,
+            "content_html": "",
+            "content_path": content_path,
+            "content_url": content_url,
+        }).eq("id", chapter_id).execute()
+
+        duplicate_ids = [row["id"] for row in old_chapters[1:] if row.get("id")]
+        if duplicate_ids:
+            supabase.table("chapters").delete().in_("id", duplicate_ids).execute()
+        remove_content_paths([row.get("content_path") for row in old_chapters if row.get("content_path") != content_path])
+        print(f"✅ Đã update chương {chapter_number}: {chapter_title}")
+    else:
+        supabase.table("chapters").insert({
+            "book_id": book_id,
+            "title": chapter_title,
+            "content_html": "",
+            "content_path": content_path,
+            "content_url": content_url,
+            "chapter_number": chapter_number,
+        }).execute()
+        print(f"✅ Đã insert lại chương {chapter_number}: {chapter_title}")
+
+    count_res = supabase.table("chapters").select("id", count="exact").eq("book_id", book_id).execute()
+    supabase.table("books").update({"chapter_count": count_res.count}).eq("id", book_id).execute()
+    print(f"   File local : {file_path}")
+    print(f"   Storage    : {content_path}")
+    print(f"   Tổng chương: {count_res.count}")
 
 
 def refresh_cover_only(translated_dir: str):
@@ -920,10 +1112,26 @@ if __name__ == "__main__":
         action='store_true',
         help='Chỉ đồng bộ book_info.txt vào bảng books, không xử lý chương và không upload ảnh bìa.'
     )
+    parser.add_argument(
+        '--force-chapter',
+        type=int,
+        default=None,
+        help='Update lại đúng một chương theo số chương, kể cả khi chương đã tồn tại trong DB.'
+    )
+    parser.add_argument(
+        '--force-chapter-file',
+        default=None,
+        help='File .md cụ thể để dùng với --force-chapter. Mặc định tìm file bắt đầu bằng số chương, ví dụ 0267_.'
+    )
     args = parser.parse_args()
 
-    if args.covers_only and args.info_only:
-        print("❌ Chỉ dùng một trong hai option: --covers-only hoặc --info-only.")
+    exclusive_modes = [args.covers_only, args.info_only, args.force_chapter is not None]
+    if sum(1 for enabled in exclusive_modes if enabled) > 1:
+        print("❌ Chỉ dùng một trong các option: --covers-only, --info-only hoặc --force-chapter.")
+        sys.exit(1)
+
+    if args.force_chapter is not None and not args.translated_dir:
+        print("❌ --force-chapter cần đi kèm --translated-dir để tránh update nhầm truyện.")
         sys.exit(1)
 
     if args.translated_dir:
@@ -932,6 +1140,12 @@ if __name__ == "__main__":
             refresh_cover_only(args.translated_dir)
         elif args.info_only:
             refresh_info_only(args.translated_dir)
+        elif args.force_chapter is not None:
+            force_update_chapter(
+                args.translated_dir,
+                args.force_chapter,
+                chapter_file=args.force_chapter_file,
+            )
         else:
             upload_chapters(args.translated_dir, limit=args.limit)
     else:

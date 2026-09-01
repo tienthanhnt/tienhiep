@@ -164,7 +164,7 @@ export async function POST(
       }
       if (errorText.includes("COMMENT_BOOK_COOLDOWN")) {
         return NextResponse.json(
-          { error: "Mỗi truyện chỉ nên gửi thêm bình luận sau khoảng 10 phút." },
+          { error: "Mỗi truyện chỉ nên gửi thêm bình luận sau khoảng 30 phút." },
           { status: 429 }
         );
       }

@@ -63,10 +63,31 @@ async function getBookDetails(identifier: string) {
       }
     );
     const chapters = resChapters.ok ? await resChapters.json() as Chapter[] : [];
+    let commentCount = 0;
+
+    try {
+      const resComments = await fetch(`${url}/rest/v1/rpc/list_book_comments`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          target_book_id: Number(id),
+          max_rows: 60,
+        }),
+        next: { revalidate: 300 },
+      });
+      const comments = resComments.ok ? await resComments.json() as unknown[] : [];
+      commentCount = comments.length;
+    } catch {
+      commentCount = 0;
+    }
 
     return {
       book: books[0] as Book,
       chapters,
+      commentCount,
     };
   } catch (err) {
     console.error("Error fetching book details:", err);
@@ -148,7 +169,7 @@ export default async function BookDetailPage({
     notFound();
   }
 
-  const { book, chapters } = data;
+  const { book, chapters, commentCount } = data;
   const initialChapterPage = Math.max(0, Number(searchParams?.chaptersPage || "0") || 0);
   const tags = [...(book.source_type ? [book.source_type] : []), ...splitTags(book.genres)];
   const siteUrl = getSiteUrl();
@@ -194,14 +215,17 @@ export default async function BookDetailPage({
             <p className="text-[#6B6357] text-sm mb-4">Tác giả: <span className="font-semibold text-[#2C2825]">{book.author || "Chưa rõ"}</span></p>
             
             <div className="flex flex-wrap gap-2.5 text-xs font-semibold">
-              <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
+              <span className="bg-[#2C2825] text-white px-3 py-1.5 rounded-md border border-[#2C2825] shadow-sm">
                 {book.status || "Đang ra"}
               </span>
-              <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
+              <span className="bg-[#2C2825] text-white px-3 py-1.5 rounded-md border border-[#2C2825] shadow-sm">
                 {book.chapter_count || chapters.length} chương
               </span>
-              <span className="bg-[#F4EFE6] text-[#5C5449] px-3 py-1.5 rounded-md border border-[#DDD5C8]">
+              <span className="bg-[#2C2825] text-white px-3 py-1.5 rounded-md border border-[#2C2825] shadow-sm">
                 {formatCompactNumber(book.view_count)} lượt đọc
+              </span>
+              <span className="bg-[#2C2825] text-white px-3 py-1.5 rounded-md border border-[#2C2825] shadow-sm">
+                {commentCount} bình luận
               </span>
               {tags.map((tag) => (
                 <span
