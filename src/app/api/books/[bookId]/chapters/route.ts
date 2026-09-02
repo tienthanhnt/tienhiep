@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getNewBookPublicId, isNewBookIdentifier, queryD1 } from "@/lib/d1";
 
 const PAGE_SIZE = 100;
 const CACHE_SECONDS = 3600;
@@ -11,10 +12,82 @@ export async function GET(
   request: Request,
   { params }: { params: { bookId: string } }
 ) {
-  const bookId = Number(params.bookId);
+  const rawBookId = params.bookId;
   const { searchParams } = new URL(request.url);
   const page = Math.max(0, Number(searchParams.get("page") || "0") || 0);
   const query = sanitizeKeyword(searchParams.get("q") || "");
+
+  if (isNewBookIdentifier(rawBookId)) {
+    const publicId = getNewBookPublicId(rawBookId);
+    if (!publicId) {
+      return NextResponse.json({ error: "Invalid book id" }, { status: 400 });
+    }
+
+    try {
+      const books = await queryD1<{ id: number }>(
+        "SELECT id FROM books WHERE public_id = ? LIMIT 1",
+        [publicId],
+        CACHE_SECONDS,
+      );
+      const book = books[0];
+      if (!book) return NextResponse.json({ chapters: [] }, { status: 200 });
+
+      let chapters;
+      if (query.length >= 2) {
+        const chapterNumber = Number(query);
+        if (Number.isInteger(chapterNumber)) {
+          chapters = await queryD1(
+            `
+            SELECT id, chapter_number, title, created_at
+            FROM chapters
+            WHERE book_id = ? AND (title LIKE ? OR chapter_number = ?)
+            ORDER BY chapter_number ASC
+            LIMIT ?
+            `,
+            [book.id, `%${query}%`, chapterNumber, PAGE_SIZE],
+            CACHE_SECONDS,
+          );
+        } else {
+          chapters = await queryD1(
+            `
+            SELECT id, chapter_number, title, created_at
+            FROM chapters
+            WHERE book_id = ? AND title LIKE ?
+            ORDER BY chapter_number ASC
+            LIMIT ?
+            `,
+            [book.id, `%${query}%`, PAGE_SIZE],
+            CACHE_SECONDS,
+          );
+        }
+      } else {
+        chapters = await queryD1(
+          `
+          SELECT id, chapter_number, title, created_at
+          FROM chapters
+          WHERE book_id = ?
+          ORDER BY chapter_number ASC
+          LIMIT ? OFFSET ?
+          `,
+          [book.id, PAGE_SIZE, page * PAGE_SIZE],
+          CACHE_SECONDS,
+        );
+      }
+
+      return NextResponse.json(
+        { chapters },
+        {
+          headers: {
+            "Cache-Control": `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=86400`,
+          },
+        },
+      );
+    } catch {
+      return NextResponse.json({ chapters: [] }, { status: 200 });
+    }
+  }
+
+  const bookId = Number(rawBookId);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

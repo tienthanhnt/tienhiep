@@ -19,12 +19,12 @@ export function slugifyVietnamese(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function getBookPath(book: { id: number; title: string }) {
+export function getBookPath(book: { id: number | string; title: string }) {
   const slug = slugifyVietnamese(book.title);
   return `/books/${slug ? `${book.id}-${slug}` : book.id}`;
 }
 
-export function getChapterPath(book: { id: number; title: string }, chapterNumber: number) {
+export function getChapterPath(book: { id: number | string; title: string }, chapterNumber: number) {
   return `${getBookPath(book)}/chapters/${chapterNumber}`;
 }
 

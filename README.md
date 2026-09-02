@@ -13,7 +13,7 @@
 
 ```
 web/importer/
-├── .env                               ← API keys (SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY)
+├── .env                               ← API keys (Supabase, Cloudflare R2/D1, Ollama/Gemini nếu dùng)
 ├── chapters/
 │   ├── Ten_Truyen/                    ← Markdown tách từ EPUB, chưa dịch
 │   └── Ten_Truyen_Translated/         ← Markdown đã dịch, folder kết thúc bằng _Translated
@@ -24,7 +24,11 @@ web/importer/
 ├── epub_to_md.py                      ← Tách EPUB → Markdown theo chương
 ├── txt_to_md.py                       ← Tách folder nhiều file TXT → Markdown theo chương
 ├── translate_chapters.py              ← Dịch raw → Markdown
-├── upload_translated.py               ← Upload lên Supabase
+├── upload_translated.py               ← Upload lên Supabase cũ
+├── upload_new_d1_r2.py                ← Upload truyện mới lên Cloudflare D1 + R2
+├── init_d1_schema.py                  ← Tạo schema D1 cho nguồn truyện mới
+├── test_d1_connection.py              ← Test kết nối D1
+├── test_r2_connection.py              ← Test kết nối R2
 └── manage_books.py                    ← Quản lý / xóa / đồng bộ
 ```
 
@@ -132,6 +136,8 @@ python translate_chapters.py --limit 250 # Default Dich Xich Tam only
 
 ### BƯỚC 3 — Upload Lên Supabase
 
+> ⚠️ Supabase hiện là nguồn dữ liệu cũ. Nếu bạn muốn đóng băng Supabase để giữ dung lượng trống cho comment/vận hành, **không upload truyện mới bằng `upload_translated.py` nữa**. Dùng phần “Upload Truyện Mới Lên Cloudflare D1 + R2” bên dưới.
+
 Trước khi upload theo cơ chế tiết kiệm database, tạo thêm 2 cột trong bảng `chapters`:
 
 ```sql
@@ -236,6 +242,167 @@ python cleanup_orphan_covers.py --delete --yes
 ```
 
 > ✅ Tool dọn cover mặc định là dry-run. Chỉ xóa file trong bucket `covers` khi dùng đủ `--delete --yes`.
+
+---
+
+### BƯỚC 3B — Upload Truyện Mới Lên Cloudflare D1 + R2
+
+Nguồn mới dùng:
+
+```text
+Cloudflare D1: metadata books/chapters
+Cloudflare R2: cover và file chương .html.gz
+Supabase cũ: giữ nguyên, không đụng dữ liệu cũ
+```
+
+Route truyện mới có prefix `new-` để không conflict ID với Supabase:
+
+```text
+/books/new-1-ten-truyen
+/books/new-1-ten-truyen/chapters/1
+```
+
+#### 1. Biến môi trường local
+
+Trong `web/importer/.env`, cần có các biến:
+
+```env
+R2_BUCKET=tienhiep-content
+R2_PUBLIC_BASE_URL=https://pub-...r2.dev
+R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+
+CLOUDFLARE_ACCOUNT_ID=...
+D1_DATABASE_ID=...
+CLOUDFLARE_API_TOKEN=...
+```
+
+> Không commit `.env`. File này đã nằm trong `.gitignore`.
+
+#### 2. Test kết nối R2/D1
+
+```bash
+cd importer
+
+# Test R2: upload file nhỏ rồi tự xóa
+python test_r2_connection.py
+
+# Test D1: tạo bảng test, insert/select rồi tự xóa
+python test_d1_connection.py
+```
+
+#### 3. Tạo schema D1
+
+Chạy một lần sau khi tạo database D1 mới:
+
+```bash
+python init_d1_schema.py
+```
+
+Schema tạo 2 bảng:
+
+```text
+books
+chapters
+```
+
+#### 4. Upload thử 1 truyện lên D1 + R2
+
+Nên test vài chương trước:
+
+```bash
+python upload_new_d1_r2.py --translated-dir chapters/Ten_Truyen_Translated --limit 3
+```
+
+Nếu OK, upload toàn bộ truyện:
+
+```bash
+python upload_new_d1_r2.py --translated-dir chapters/Ten_Truyen_Translated
+```
+
+Tool sẽ:
+
+- Upload cover lên R2 theo prefix `covers/new/`.
+- Upload chương gzip lên R2 theo prefix `chapters/new-{id}/`.
+- Ghi metadata vào D1.
+- Tự bỏ qua chương đã có nếu chạy lại.
+- In route mới sau khi upload, ví dụ:
+
+```text
+/books/new-1-than-dao-dan-ton
+```
+
+#### 5. Batch convert/upload folder nhiều EPUB
+
+Nếu bạn có một folder chứa nhiều EPUB, ví dụ khoảng 50 truyện, dùng `batch_epub_upload.py`.
+
+Flow khuyến nghị gồm 2 bước:
+
+```bash
+cd importer
+
+# Bước 1: convert toàn bộ EPUB sang folder *_Translated và ghi book_info.txt bằng Ollama
+python batch_epub_upload.py /duong/dan/folder_epub --convert-only
+
+# Bước 2: upload thử 3 truyện đầu của batch mới nhất lên D1 + R2
+python batch_epub_upload.py --upload-only --upload-limit 3
+```
+
+Nếu 3 truyện đầu ổn, upload các truyện tiếp theo theo từng nhóm:
+
+```bash
+# Bỏ qua 3 truyện đã upload, upload tiếp 3 truyện
+python batch_epub_upload.py --upload-only --upload-skip 3 --upload-limit 3
+
+# Hoặc upload toàn bộ phần còn lại trong batch mới nhất
+python batch_epub_upload.py --upload-only --upload-skip 3
+```
+
+Nếu muốn convert lại cả batch khi folder output đã tồn tại:
+
+```bash
+python batch_epub_upload.py /duong/dan/folder_epub --convert-only --overwrite-existing
+```
+
+Ghi chú quan trọng:
+
+- Batch script hiện upload bằng `upload_new_d1_r2.py`, tức là **D1 + R2**, không phải Supabase cũ.
+- Tool chỉ upload các folder nằm trong manifest batch mới nhất: `.batch_epub_upload_latest.json`.
+- Mỗi folder được batch tạo có marker `.batch_epub_upload.json` để tránh nhầm với các folder truyện cũ đã convert thủ công.
+- SEO metadata mặc định dùng Ollama model `qwen3:14b`; có thể đổi bằng `--ollama-model`.
+- Ranking được random trong khoảng `50-100` khi convert.
+
+#### 6. Biến môi trường trên Vercel
+
+Trong Vercel project, thêm vào:
+
+```env
+CLOUDFLARE_ACCOUNT_ID=...
+D1_DATABASE_ID=...
+CLOUDFLARE_API_TOKEN=...
+```
+
+Vào:
+
+```text
+Vercel → Project → Settings → Environment Variables
+```
+
+Chọn ít nhất `Production`, sau đó redeploy.
+
+#### 7. Trạng thái hỗ trợ trên web
+
+Hiện web đã hỗ trợ:
+
+- Trang chủ merge `Supabase cũ + D1 mới`.
+- Sort chung theo `ranking`.
+- Trang chi tiết truyện `new-*`.
+- Trang đọc chương `new-*`.
+- Mục lục chương `new-*`.
+- Sitemap có truyện D1 mới.
+
+Tạm thời chưa ghi comment/view cho truyện `new-*` để tránh ghi nhầm vào Supabase cũ. Nếu cần, tạo bảng comment/view riêng trong D1 ở bước sau.
 
 ---
 
@@ -394,8 +561,16 @@ ORDER BY click_count DESC;
 |---|---|
 | Tách EPUB thành Markdown | `python epub_to_md.py /duong/dan/truyen.epub chapters` |
 | Dịch truyện | `python translate_chapters.py --source-dir ... --target-dir ...` |
-| Upload tất cả | `python upload_translated.py` |
-| Upload 1 truyện | `python upload_translated.py --translated-dir chapters/...` |
+| Upload tất cả lên Supabase cũ | `python upload_translated.py` |
+| Upload 1 truyện lên Supabase cũ | `python upload_translated.py --translated-dir chapters/...` |
+| Test R2 | `python test_r2_connection.py` |
+| Test D1 | `python test_d1_connection.py` |
+| Tạo schema D1 | `python init_d1_schema.py` |
+| Upload thử 3 chương lên D1 + R2 | `python upload_new_d1_r2.py --translated-dir chapters/... --limit 3` |
+| Upload 1 truyện mới lên D1 + R2 | `python upload_new_d1_r2.py --translated-dir chapters/...` |
+| Batch convert nhiều EPUB bằng AI SEO | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only` |
+| Batch upload thử 3 truyện lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-limit 3` |
+| Batch upload phần còn lại lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-skip 3` |
 | Xem truyện trong DB | `python manage_books.py list` |
 | Xem chương của truyện | `python manage_books.py list-chapters "Tên"` |
 | Xóa 1 chương | `python manage_books.py delete-chapter "Tên" 5` |

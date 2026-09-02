@@ -10,7 +10,7 @@ import BookComments from './BookComments';
 import { getBookPath, getChapterPath } from '@/lib/seo';
 
 interface ChapterReaderProps {
-  bookId: number;
+  bookId: number | string;
   bookTitle: string;
   chapterNumber: number;
   chapterTitle: string;
@@ -21,7 +21,7 @@ interface ChapterReaderProps {
 }
 
 interface ChapterNavItem {
-  id: number;
+  id: number | string;
   chapter_number: number;
   title: string;
 }
@@ -102,6 +102,8 @@ export default function ChapterReader({
       try {
         const raw = window.localStorage.getItem(VIEW_TRACKING_KEY);
         const tracked = raw ? JSON.parse(raw) : {};
+        if (String(bookId).startsWith('new-')) return;
+
         const lastTrackedAt = Number(tracked?.[bookId] || 0);
         if (Date.now() - lastTrackedAt < VIEW_TRACKING_INTERVAL_MS) return;
 
@@ -137,34 +139,17 @@ export default function ChapterReader({
 
     const controller = new AbortController();
     const loadTocPage = async () => {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!url || !key) {
-        setTocError('Thiếu cấu hình Supabase.');
-        return;
-      }
-
       setTocLoading(true);
       setTocError('');
 
       try {
-        const from = tocPage * TOC_PAGE_SIZE;
-        const to = from + TOC_PAGE_SIZE - 1;
-        const response = await fetch(
-          `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&order=chapter_number.asc`,
-          {
-            headers: {
-              apikey: key,
-              Authorization: `Bearer ${key}`,
-              Range: `${from}-${to}`,
-            },
-            signal: controller.signal,
-          }
-        );
+        const response = await fetch(`/api/books/${bookId}/chapters?page=${tocPage}`, {
+          signal: controller.signal,
+        });
 
         if (!response.ok) throw new Error('Không tải được mục lục.');
-        const data = await response.json() as ChapterNavItem[];
-        setTocCache((current) => ({ ...current, [tocPage]: data }));
+        const data = await response.json() as { chapters?: ChapterNavItem[] };
+        setTocCache((current) => ({ ...current, [tocPage]: data.chapters || [] }));
       } catch (error) {
         if (!controller.signal.aborted) {
           setTocError(error instanceof Error ? error.message : 'Không tải được mục lục.');
@@ -190,33 +175,15 @@ export default function ChapterReader({
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!url || !key) return;
-
       setTocSearchLoading(true);
       try {
-        const escapedKeyword = keyword.replace(/[%*_]/g, '');
-        const chapterNumber = Number(escapedKeyword);
-        const filters = [`title.ilike.*${encodeURIComponent(escapedKeyword)}*`];
-        if (Number.isInteger(chapterNumber)) {
-          filters.push(`chapter_number.eq.${chapterNumber}`);
-        }
-
-        const response = await fetch(
-          `${url}/rest/v1/chapters?book_id=eq.${bookId}&select=id,chapter_number,title&or=(${filters.join(',')})&order=chapter_number.asc&limit=100`,
-          {
-            headers: {
-              apikey: key,
-              Authorization: `Bearer ${key}`,
-            },
-            signal: controller.signal,
-          }
-        );
+        const response = await fetch(`/api/books/${bookId}/chapters?q=${encodeURIComponent(keyword)}`, {
+          signal: controller.signal,
+        });
 
         if (!response.ok) throw new Error();
-        const data = await response.json() as ChapterNavItem[];
-        setTocSearchResults(data);
+        const data = await response.json() as { chapters?: ChapterNavItem[] };
+        setTocSearchResults(data.chapters || []);
       } catch {
         if (!controller.signal.aborted) {
           setTocSearchResults([]);
@@ -636,12 +603,14 @@ export default function ChapterReader({
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →', recordNextChapterClick)}
       </div>
 
-      <BookComments
-        bookId={bookId}
-        chapterNumber={chapterNumber}
-        showList={false}
-        compact
-      />
+      {typeof bookId === 'number' && (
+        <BookComments
+          bookId={bookId}
+          chapterNumber={chapterNumber}
+          showList={false}
+          compact
+        />
+      )}
 
       {/* Native Banner Positioned at bottom */}
       <AdsterraNativeBanner className="my-2" />

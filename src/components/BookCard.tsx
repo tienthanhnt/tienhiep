@@ -4,7 +4,7 @@ import { formatCompactNumber } from '@/lib/format';
 import { getBookPath } from '@/lib/seo';
 
 interface BookCardProps {
-  id: number;
+  id: number | string;
   title: string;
   author: string;
   chapterCount: number;

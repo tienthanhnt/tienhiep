@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import ChapterList from '@/components/ChapterList';
 import AdsterraBanner from '@/components/AdsterraBanner';
 import BookComments from '@/components/BookComments';
+import { getNewBookPublicId, isNewBookIdentifier, queryD1 } from '@/lib/d1';
 import { formatCompactNumber } from '@/lib/format';
 import { resolveBookId } from '@/lib/books';
 import { buildBookDescription, getBookPath, getChapterPath, getSiteUrl, SITE_NAME } from '@/lib/seo';
@@ -11,14 +12,15 @@ import { buildBookDescription, getBookPath, getChapterPath, getSiteUrl, SITE_NAM
 export const revalidate = 3600;
 
 interface Chapter {
-  id: number;
+  id: number | string;
   chapter_number: number;
   title: string;
   created_at: string;
 }
 
 interface Book {
-  id: number;
+  id: number | string;
+  internal_id?: number;
   title: string;
   author: string;
   cover_url: string;
@@ -30,6 +32,26 @@ interface Book {
   view_count?: number | null;
 }
 
+interface D1BookRow {
+  id: number;
+  public_id?: string | null;
+  title: string;
+  author: string;
+  cover_url: string;
+  status: string;
+  chapter_count: number;
+  description?: string | null;
+  genres?: string | null;
+  source_type?: string | null;
+}
+
+interface D1ChapterRow {
+  id: number;
+  chapter_number: number;
+  title: string;
+  created_at: string;
+}
+
 function splitTags(value?: string | null) {
   return (value || "")
     .split(",")
@@ -38,6 +60,48 @@ function splitTags(value?: string | null) {
 }
 
 async function getBookDetails(identifier: string) {
+  if (isNewBookIdentifier(identifier)) {
+    const publicId = getNewBookPublicId(identifier);
+    if (!publicId) return null;
+
+    const books = await queryD1<D1BookRow>(
+      `
+      SELECT id, public_id, title, author, cover_url, status, chapter_count,
+             description, genres, source_type
+      FROM books
+      WHERE public_id = ?
+      LIMIT 1
+      `,
+      [publicId],
+      3600,
+    );
+    if (!books[0]) return null;
+
+    const d1Book = books[0];
+    const chapters = await queryD1<D1ChapterRow>(
+      `
+      SELECT id, chapter_number, title, created_at
+      FROM chapters
+      WHERE book_id = ?
+      ORDER BY chapter_number ASC
+      LIMIT 100
+      `,
+      [d1Book.id],
+      3600,
+    );
+
+    return {
+      book: {
+        ...d1Book,
+        id: d1Book.public_id || `new-${d1Book.id}`,
+        internal_id: d1Book.id,
+        view_count: 0,
+      } as Book,
+      chapters,
+      commentCount: 0,
+    };
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -96,6 +160,31 @@ async function getBookDetails(identifier: string) {
 }
 
 async function getBookSeoData(identifier: string) {
+  if (isNewBookIdentifier(identifier)) {
+    const publicId = getNewBookPublicId(identifier);
+    if (!publicId) return null;
+
+    const books = await queryD1<D1BookRow>(
+      `
+      SELECT id, public_id, title, author, cover_url, status, chapter_count,
+             description, genres, source_type
+      FROM books
+      WHERE public_id = ?
+      LIMIT 1
+      `,
+      [publicId],
+      3600,
+    );
+    const book = books[0];
+    if (!book) return null;
+
+    return {
+      ...book,
+      id: book.public_id || `new-${book.id}`,
+      view_count: 0,
+    } as Book;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -263,7 +352,7 @@ export default async function BookDetailPage({
         initialPage={initialChapterPage}
       />
 
-      <BookComments bookId={book.id} />
+      {typeof book.id === "number" && <BookComments bookId={book.id} />}
 
       <AdsterraBanner />
     </div>

@@ -1,11 +1,12 @@
 """
 Batch convert many EPUB files, for example 50 books, to Markdown folders,
-enrich book_info.txt, then upload.
+enrich book_info.txt, then upload new books to Cloudflare D1 + R2.
 
 Usage:
-  python batch_epub_upload.py /path/to/epub_folder
   python batch_epub_upload.py /path/to/epub_folder --convert-only
-  python batch_epub_upload.py /path/to/epub_folder --output-dir chapters
+  python batch_epub_upload.py --upload-only --upload-limit 3
+  python batch_epub_upload.py /path/to/epub_folder --convert-only
+  python batch_epub_upload.py --upload-only
 """
 
 import argparse
@@ -18,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import epub_to_md
+from supabase_lookup import fetch_supabase_title_slugs, slugify
 
 
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "chapters"
@@ -340,6 +342,29 @@ def read_latest_batch_manifest(output_dir: Path) -> list[Path]:
     return book_dirs
 
 
+def get_book_title(book_dir: Path) -> str:
+    fallback = book_dir.name.removesuffix("_Translated").replace("_", " ")
+    return clean_text(read_book_info(book_dir).get("title") or "", fallback)
+
+
+def filter_supabase_duplicates(book_dirs: list[Path]) -> tuple[list[Path], list[tuple[Path, dict]]]:
+    supabase_books = fetch_supabase_title_slugs()
+    if not supabase_books:
+        return book_dirs, []
+
+    uploadable: list[Path] = []
+    skipped: list[tuple[Path, dict]] = []
+    for book_dir in book_dirs:
+        title = get_book_title(book_dir)
+        matched = supabase_books.get(slugify(title))
+        if matched:
+            skipped.append((book_dir, matched))
+        else:
+            uploadable.append(book_dir)
+
+    return uploadable, skipped
+
+
 def list_epub_files(epub_dir: Path) -> list[Path]:
     return sorted(
         [path for path in epub_dir.iterdir() if path.is_file() and path.suffix.lower() == ".epub"],
@@ -375,7 +400,7 @@ def convert_epub(
     return book_dir_path
 
 
-def upload_book(book_dir: Path):
+def upload_book(book_dir: Path, allow_supabase_duplicate: bool = False):
     try:
         from dotenv import load_dotenv
 
@@ -383,14 +408,17 @@ def upload_book(book_dir: Path):
     except Exception:
         pass
 
-    import upload_translated
+    import upload_new_d1_r2
 
-    upload_translated.upload_chapters(str(book_dir))
+    upload_new_d1_r2.upload_chapters_new(
+        str(book_dir),
+        allow_supabase_duplicate=allow_supabase_duplicate,
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Tự động convert folder nhiều EPUB, ghi SEO book_info.txt và upload lên web."
+        description="Tự động convert folder nhiều EPUB, ghi SEO book_info.txt và upload truyện mới lên D1 + R2."
     )
     parser.add_argument(
         "epub_dir",
@@ -405,12 +433,17 @@ def main():
     parser.add_argument(
         "--convert-only",
         action="store_true",
-        help="Chỉ convert và ghi book_info.txt, chưa upload lên Supabase.",
+        help="Chỉ convert và ghi book_info.txt, chưa upload lên D1 + R2.",
     )
     parser.add_argument(
         "--upload-only",
         action="store_true",
         help="Bỏ qua convert, chỉ upload các folder trong manifest batch mới nhất.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Chỉ in danh sách sẽ xử lý, không convert và không upload.",
     )
     parser.add_argument(
         "--upload-limit",
@@ -456,10 +489,18 @@ def main():
         action="store_true",
         help="Cho phép convert lại nếu folder output của truyện đã tồn tại.",
     )
+    parser.add_argument(
+        "--allow-supabase-duplicates",
+        action="store_true",
+        help="Cho phép upload lên D1/R2 cả truyện đã tồn tại trong Supabase cũ.",
+    )
     args = parser.parse_args()
 
     if args.convert_only and args.upload_only:
         print("❌ Chỉ dùng một trong hai option: --convert-only hoặc --upload-only.")
+        sys.exit(1)
+    if args.dry_run and not args.upload_only:
+        print("❌ --dry-run hiện chỉ dùng cùng --upload-only để xem danh sách sẽ upload.")
         sys.exit(1)
     if args.upload_limit is not None and args.upload_limit < 1:
         print("❌ --upload-limit phải lớn hơn 0.")
@@ -481,6 +522,18 @@ def main():
             print("   Hãy chạy convert bằng batch_epub_upload.py trước, hoặc bỏ --upload-only để convert batch mới.")
             return
         total_in_manifest = len(book_dirs)
+
+        if not args.allow_supabase_duplicates:
+            book_dirs, skipped_supabase = filter_supabase_duplicates(book_dirs)
+            if skipped_supabase:
+                print(f"🛡️  Đã skip {len(skipped_supabase)} truyện vì đã có trong Supabase cũ:")
+                for book_dir, matched in skipped_supabase:
+                    print(
+                        f"   - {get_book_title(book_dir)} "
+                        f"(Supabase ID {matched.get('id')}, {matched.get('chapter_count') or 0} chương)"
+                    )
+                print("   Nếu cố ý muốn upload trùng lên D1/R2, thêm --allow-supabase-duplicates.")
+
         if args.upload_skip:
             book_dirs = book_dirs[args.upload_skip:]
         if args.upload_limit is not None:
@@ -490,12 +543,16 @@ def main():
             return
 
         print(
-            f"📌 Upload-only: chỉ upload {len(book_dirs)}/{total_in_manifest} "
-            "folder trong batch mới nhất."
+            f"📌 Upload-only: sẽ upload {len(book_dirs)}/{total_in_manifest} "
+            "folder trong batch mới nhất sau khi lọc trùng Supabase."
         )
         print("📚 Danh sách sẽ upload:")
         for index, book_dir in enumerate(book_dirs, 1):
             print(f"   {index}. {book_dir.name}")
+
+        if args.dry_run:
+            print("\n✅ Dry-run xong. Chưa upload truyện nào.")
+            return
     else:
         if not args.epub_dir:
             print("❌ Thiếu folder EPUB.")
@@ -546,11 +603,11 @@ def main():
         print(f"\n✅ Convert xong {len(book_dirs)} truyện. Chưa upload vì đang dùng --convert-only.")
         return
 
-    print(f"\n🚀 Bắt đầu upload {len(book_dirs)} truyện lên web...")
+    print(f"\n🚀 Bắt đầu upload {len(book_dirs)} truyện mới lên Cloudflare D1 + R2...")
     for index, book_dir in enumerate(book_dirs, 1):
         print(f"\n{'=' * 70}")
         print(f"⬆️  [{index}/{len(book_dirs)}] Upload: {book_dir}")
-        upload_book(book_dir)
+        upload_book(book_dir, allow_supabase_duplicate=args.allow_supabase_duplicates)
 
     print(f"\n🏆 Hoàn tất batch: {len(book_dirs)} truyện.")
 

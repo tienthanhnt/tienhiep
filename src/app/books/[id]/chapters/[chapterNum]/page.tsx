@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ChapterReader from '@/components/ChapterReader';
 import { gunzipSync } from 'zlib';
+import { getNewBookPublicId, isNewBookIdentifier, queryD1 } from '@/lib/d1';
 import { resolveBookId } from '@/lib/books';
 import { buildChapterDescription, getChapterPath, getCleanChapterTitle, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
@@ -12,7 +13,7 @@ export const revalidate = CHAPTER_PAGE_REVALIDATE_SECONDS;
 export const runtime = 'nodejs';
 
 interface Chapter {
-  id: number;
+  id: number | string;
   book_id: number;
   chapter_number: number;
   title: string;
@@ -22,10 +23,29 @@ interface Chapter {
 }
 
 interface Book {
-  id: number;
+  id: number | string;
+  internal_id?: number;
   title: string;
   chapter_count: number;
   cover_url?: string | null;
+}
+
+interface D1BookRow {
+  id: number;
+  public_id?: string | null;
+  title: string;
+  chapter_count: number;
+  cover_url?: string | null;
+}
+
+interface D1ChapterRow {
+  id: number;
+  book_id: number;
+  chapter_number: number;
+  title: string;
+  content_html?: string | null;
+  content_url?: string | null;
+  content_path?: string | null;
 }
 
 async function fetchChapterContent(chapter: Chapter) {
@@ -48,6 +68,53 @@ async function fetchChapterContent(chapter: Chapter) {
 }
 
 async function getChapterData(bookIdentifier: string, chapterNum: string) {
+  if (isNewBookIdentifier(bookIdentifier)) {
+    const publicId = getNewBookPublicId(bookIdentifier);
+    if (!publicId) return null;
+
+    try {
+      const books = await queryD1<D1BookRow>(
+        "SELECT id, public_id, title, chapter_count, cover_url FROM books WHERE public_id = ? LIMIT 1",
+        [publicId],
+        CHAPTER_PAGE_REVALIDATE_SECONDS,
+      );
+      const book = books[0];
+      if (!book) return null;
+
+      const chapters = await queryD1<D1ChapterRow>(
+        `
+        SELECT id, book_id, chapter_number, title, content_html, content_url, content_path
+        FROM chapters
+        WHERE book_id = ? AND chapter_number = ?
+        LIMIT 1
+        `,
+        [book.id, Number(chapterNum)],
+        CHAPTER_PAGE_REVALIDATE_SECONDS,
+      );
+      const chapter = chapters[0];
+      if (!chapter) return null;
+
+      let contentHtml = chapter.content_html || "";
+      if (!contentHtml && chapter.content_url) {
+        contentHtml = await fetchChapterContent(chapter);
+      }
+      if (!contentHtml) return null;
+
+      return {
+        book: {
+          ...book,
+          id: book.public_id || `new-${book.id}`,
+          internal_id: book.id,
+        } as Book,
+        chapter,
+        contentHtml,
+      };
+    } catch (err) {
+      console.error("Error fetching D1 chapter:", err);
+      return null;
+    }
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -100,6 +167,35 @@ async function getChapterData(bookIdentifier: string, chapterNum: string) {
 }
 
 async function getChapterSeoData(bookIdentifier: string, chapterNum: string) {
+  if (isNewBookIdentifier(bookIdentifier)) {
+    const publicId = getNewBookPublicId(bookIdentifier);
+    if (!publicId) return null;
+
+    const books = await queryD1<D1BookRow>(
+      "SELECT id, public_id, title, cover_url, chapter_count FROM books WHERE public_id = ? LIMIT 1",
+      [publicId],
+      CHAPTER_PAGE_REVALIDATE_SECONDS,
+    );
+    const book = books[0];
+    if (!book) return null;
+
+    const chapters = await queryD1<Pick<D1ChapterRow, "chapter_number" | "title">>(
+      "SELECT chapter_number, title FROM chapters WHERE book_id = ? AND chapter_number = ? LIMIT 1",
+      [book.id, Number(chapterNum)],
+      CHAPTER_PAGE_REVALIDATE_SECONDS,
+    );
+    const chapter = chapters[0];
+    if (!chapter) return null;
+
+    return {
+      book: {
+        ...book,
+        id: book.public_id || `new-${book.id}`,
+      } as Book,
+      chapter,
+    };
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

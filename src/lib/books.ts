@@ -8,6 +8,8 @@ interface BookSlugItem {
 const BOOK_SLUG_CACHE_SECONDS = 3600;
 
 export async function resolveBookId(identifier: string) {
+  if (/^new-\d+(?:-|$)/.test(identifier)) return null;
+
   if (/^\d+$/.test(identifier)) return identifier;
 
   const idSlugMatch = identifier.match(/^(\d+)-/);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isNewBookIdentifier } from "@/lib/d1";
 
 const BOT_USER_AGENT_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|uptime|vercel|headless/i;
 
@@ -6,6 +7,10 @@ export async function POST(
   request: Request,
   { params }: { params: { bookId: string } }
 ) {
+  if (isNewBookIdentifier(params.bookId)) {
+    return NextResponse.json({ skipped: true });
+  }
+
   const bookId = Number(params.bookId);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

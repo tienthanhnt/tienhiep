@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { getChapterPath } from '@/lib/seo';
 
 interface RecentItem {
-  bookId: number;
+  bookId: number | string;
   bookTitle: string;
   chapterNumber: number;
   chapterTitle: string;

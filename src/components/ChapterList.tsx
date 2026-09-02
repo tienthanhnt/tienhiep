@@ -6,14 +6,14 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getChapterPath } from '@/lib/seo';
 
 interface Chapter {
-  id: number;
+  id: number | string;
   chapter_number: number;
   title: string;
   created_at: string;
 }
 
 interface ChapterListProps {
-  bookId: number;
+  bookId: number | string;
   bookTitle: string;
   initialChapters: Chapter[];
   chapterCount: number;

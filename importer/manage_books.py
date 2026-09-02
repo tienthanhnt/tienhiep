@@ -804,16 +804,65 @@ def upload_all_chapters(book_id: int, translated_dir: str):
 def cmd_list():
     """Liệt kê tất cả truyện trong DB."""
     res = supabase.table("books").select("id, title, author, chapter_count, status, ranking").order("ranking", desc=False, nullsfirst=False).order("id").execute()
-    books = res.data
+    supabase_books = res.data or []
+    books = [
+        {
+            "id": str(book["id"]),
+            "source": "Supabase",
+            "ranking": book.get("ranking"),
+            "title": book.get("title") or "",
+            "author": book.get("author") or "Chưa rõ",
+            "chapter_count": book.get("chapter_count") or 0,
+            "status": book.get("status") or "",
+        }
+        for book in supabase_books
+    ]
+
+    missing_d1_env = [
+        name
+        for name in ("CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "CLOUDFLARE_API_TOKEN")
+        if not os.environ.get(name)
+    ]
+    if not missing_d1_env:
+        try:
+            from cloudflare_store import d1_rows
+
+            d1_books = d1_rows(
+                """
+                SELECT id, public_id, title, author, chapter_count, status, ranking
+                FROM books
+                ORDER BY ranking ASC, id ASC
+                """
+            )
+            for book in d1_books:
+                books.append(
+                    {
+                        "id": book.get("public_id") or f"new-{book.get('id')}",
+                        "source": "D1/R2",
+                        "ranking": book.get("ranking"),
+                        "title": book.get("title") or "",
+                        "author": book.get("author") or "Chưa rõ",
+                        "chapter_count": book.get("chapter_count") or 0,
+                        "status": book.get("status") or "",
+                    }
+                )
+        except Exception as exc:
+            print(f"⚠️  Không đọc được danh sách D1/R2, chỉ hiển thị Supabase: {exc}")
+
     if not books:
         print("📭 Chưa có truyện nào trong Database.")
         return
-    print(f"\n{'ID':<6} {'Rank':<6} {'Tên Truyện':<40} {'Tác Giả':<20} {'Chương':<8} {'TT'}")
-    print("─" * 95)
+
+    books.sort(key=lambda book: (book.get("ranking") is None, book.get("ranking") or 0, book["source"], str(book["id"])))
+    print(f"\n{'ID':<10} {'Source':<9} {'Rank':<6} {'Tên Truyện':<40} {'Tác Giả':<20} {'Chương':<8} {'TT'}")
+    print("─" * 118)
     for b in books:
         rank = b.get("ranking") if b.get("ranking") is not None else ""
-        print(f"{b['id']:<6} {rank!s:<6} {b['title']:<40} {(b['author'] or 'Chưa rõ'):<20} {(b['chapter_count'] or 0):<8} {b['status'] or ''}")
-    print(f"\n✅ Tổng cộng: {len(books)} truyện")
+        print(
+            f"{b['id']:<10} {b['source']:<9} {rank!s:<6} "
+            f"{b['title']:<40} {b['author']:<20} {b['chapter_count']:<8} {b['status']}"
+        )
+    print(f"\n✅ Tổng cộng: {len(books)} truyện ({len(supabase_books)} Supabase, {len(books) - len(supabase_books)} D1/R2)")
 
 
 def cmd_delete_book(title: str, confirm: bool = False):

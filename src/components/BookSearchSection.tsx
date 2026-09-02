@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BookCard from "@/components/BookCard";
 
 interface BookSearchItem {
-  id: number;
+  id: number | string;
   title: string;
   author: string;
   chapterCount: number;

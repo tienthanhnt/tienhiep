@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
 import AdsterraBanner4 from "@/components/AdsterraBanner4";
+import { queryD1 } from "@/lib/d1";
 import { formatCompactNumber } from "@/lib/format";
 import { getSiteUrl, SITE_NAME } from "@/lib/seo";
 import { redirect } from "next/navigation";
@@ -26,7 +27,7 @@ interface SupabaseBook {
 }
 
 interface BookItem {
-  id: number;
+  id: number | string;
   title: string;
   author: string;
   chapterCount: number;
@@ -37,6 +38,20 @@ interface BookItem {
   sourceType: string;
   viewCount: number;
   ranking: number | null;
+}
+
+interface D1Book {
+  id: number;
+  public_id?: string | null;
+  title: string;
+  author: string;
+  chapter_count: number;
+  rating: number;
+  status: 'Đang ra' | 'Hoàn thành';
+  cover_url: string;
+  genres?: string | null;
+  source_type?: string | null;
+  ranking?: number | null;
 }
 
 function mapBook(b: SupabaseBook): BookItem {
@@ -55,45 +70,40 @@ function mapBook(b: SupabaseBook): BookItem {
   };
 }
 
-function parseTotalCount(contentRange: string | null) {
-  if (!contentRange) return 0;
-  const match = contentRange.match(/\/(\d+)$/);
-  return match ? Number(match[1]) : 0;
+function mapD1Book(b: D1Book): BookItem {
+  return {
+    id: b.public_id || `new-${b.id}`,
+    title: b.title,
+    author: b.author || "Chưa rõ",
+    chapterCount: b.chapter_count || 0,
+    rating: b.rating || 8.0,
+    status: (b.status || "Đang ra") as 'Đang ra' | 'Hoàn thành',
+    coverUrl: b.cover_url || DEFAULT_COVER_URL,
+    genres: b.genres || "",
+    sourceType: b.source_type || "",
+    viewCount: 0,
+    ranking: b.ranking ?? null,
+  };
 }
 
-async function getBooksPage(page: number) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return { books: [] as SupabaseBook[], totalCount: 0 };
-
-  const offset = (page - 1) * BOOKS_PER_PAGE;
-  try {
-    const res = await fetch(`${url}/rest/v1/books?select=*&order=ranking.asc.nullslast,id.asc&limit=${BOOKS_PER_PAGE}&offset=${offset}`, {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Prefer: "count=exact",
-      },
-      next: { revalidate: 1800 },
-    });
-    if (!res.ok) return { books: [] as SupabaseBook[], totalCount: 0 };
-    return {
-      books: await res.json() as SupabaseBook[],
-      totalCount: parseTotalCount(res.headers.get("content-range")),
-    };
-  } catch {
-    return { books: [] as SupabaseBook[], totalCount: 0 };
-  }
+function sortBooks(a: BookItem, b: BookItem) {
+  const rankA = a.ranking ?? Number.POSITIVE_INFINITY;
+  const rankB = b.ranking ?? Number.POSITIVE_INFINITY;
+  if (rankA !== rankB) return rankA - rankB;
+  return String(a.id).localeCompare(String(b.id), "vi");
 }
 
-async function getSearchBooks() {
+async function getSupabaseBooks() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return [];
 
   try {
     const res = await fetch(`${url}/rest/v1/books?select=id,title,author,chapter_count,rating,status,cover_url,genres,source_type,view_count,ranking&order=ranking.asc.nullslast,id.asc`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
       next: { revalidate: 1800 },
     });
     if (!res.ok) return [];
@@ -103,22 +113,36 @@ async function getSearchBooks() {
   }
 }
 
+async function getD1Books() {
+  return queryD1<D1Book>(
+    `
+    SELECT id, public_id, title, author, chapter_count, rating, status,
+           cover_url, genres, source_type, ranking
+    FROM books
+    ORDER BY ranking ASC, id ASC
+    `,
+    [],
+    1800,
+  );
+}
+
 export default async function Home({
   searchParams,
 }: {
   searchParams?: { page?: string };
 }) {
   const requestedPage = Math.max(1, Number(searchParams?.page || "1") || 1);
-  const [{ books: dbBooks, totalCount }, searchDbBooks] = await Promise.all([
-    getBooksPage(requestedPage),
-    getSearchBooks(),
+  const [supabaseBooks, d1Books] = await Promise.all([
+    getSupabaseBooks(),
+    getD1Books(),
   ]);
 
-  const books = dbBooks.map(mapBook);
-  const searchBooks = searchDbBooks.length > 0 ? searchDbBooks.map(mapBook) : books;
+  const searchBooks = [...supabaseBooks.map(mapBook), ...d1Books.map(mapD1Book)].sort(sortBooks);
+  const totalCount = searchBooks.length;
+  const offset = (requestedPage - 1) * BOOKS_PER_PAGE;
+  const books = searchBooks.slice(offset, offset + BOOKS_PER_PAGE);
   const totalViewCount = searchBooks.reduce((sum, book) => sum + (book.viewCount || 0), 0);
-  const effectiveTotalCount = totalCount || books.length;
-  const totalPages = Math.max(1, Math.ceil(effectiveTotalCount / BOOKS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalCount / BOOKS_PER_PAGE));
 
   if (totalCount > 0 && requestedPage > totalPages) {
     redirect(totalPages === 1 ? "/" : `/?page=${totalPages}`);
@@ -140,7 +164,7 @@ export default async function Home({
     url: siteUrl,
     inLanguage: "vi",
     description: "Danh sách truyện tiên hiệp, huyền huyễn, kiếm hiệp và tu tiên tiếng Việt.",
-    numberOfItems: effectiveTotalCount,
+    numberOfItems: totalCount,
   };
 
   return (
@@ -178,7 +202,7 @@ export default async function Home({
           searchBooks={searchBooks}
           currentPage={requestedPage}
           totalPages={totalPages}
-          totalCount={effectiveTotalCount}
+          totalCount={totalCount}
           pageSize={BOOKS_PER_PAGE}
         />
       </Suspense>

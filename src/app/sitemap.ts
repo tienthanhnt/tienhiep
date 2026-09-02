@@ -1,10 +1,18 @@
 import type { MetadataRoute } from "next";
+import { queryD1 } from "@/lib/d1";
 import { getBookPath, getSiteUrl } from "@/lib/seo";
 
 export const revalidate = 3600;
 
 interface SitemapBook {
+  id: number | string;
+  title: string;
+  created_at?: string | null;
+}
+
+interface D1SitemapBook {
   id: number;
+  public_id?: string | null;
   title: string;
   created_at?: string | null;
 }
@@ -43,7 +51,22 @@ async function fetchAllFromSupabase<T>(path: string) {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
-  const books = await fetchAllFromSupabase<SitemapBook>("books?select=id,title,created_at&order=ranking.asc.nullslast,id.asc");
+  const [supabaseBooks, d1Books] = await Promise.all([
+    fetchAllFromSupabase<SitemapBook>("books?select=id,title,created_at&order=ranking.asc.nullslast,id.asc"),
+    queryD1<D1SitemapBook>(
+      "SELECT id, public_id, title, created_at FROM books ORDER BY ranking ASC, id ASC",
+      [],
+      3600,
+    ),
+  ]);
+  const books: SitemapBook[] = [
+    ...supabaseBooks,
+    ...d1Books.map((book) => ({
+      id: book.public_id || `new-${book.id}`,
+      title: book.title,
+      created_at: book.created_at,
+    })),
+  ];
 
   return [
     {
