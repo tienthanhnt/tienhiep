@@ -26,6 +26,9 @@ web/importer/
 ├── translate_chapters.py              ← Dịch raw → Markdown
 ├── upload_translated.py               ← Upload lên Supabase cũ
 ├── upload_new_d1_r2.py                ← Upload truyện mới lên Cloudflare D1 + R2
+├── batch_epub_upload.py               ← Batch convert nhiều EPUB + upload lên D1/R2
+├── check_batch_upload_status.py       ← Check batch đã upload/trùng nguồn nào
+├── analyze_r2_storage.py              ← Check orphan/missing object trong R2 so với D1
 ├── init_d1_schema.py                  ← Tạo schema D1 cho nguồn truyện mới
 ├── test_d1_connection.py              ← Test kết nối D1
 ├── test_r2_connection.py              ← Test kết nối R2
@@ -333,9 +336,9 @@ Tool sẽ:
 /books/new-1-than-dao-dan-ton
 ```
 
-#### 5. Batch convert/upload folder nhiều EPUB
+#### 5. Batch convert/upload khoảng 50 EPUB lên D1 + R2
 
-Nếu bạn có một folder chứa nhiều EPUB, ví dụ khoảng 50 truyện, dùng `batch_epub_upload.py`.
+Khi bạn có một folder chứa nhiều file EPUB, ví dụ 50 truyện, dùng `batch_epub_upload.py`.
 
 Flow khuyến nghị gồm 2 bước:
 
@@ -345,21 +348,32 @@ cd importer
 # Bước 1: convert toàn bộ EPUB sang folder *_Translated và ghi book_info.txt bằng Ollama
 python batch_epub_upload.py /duong/dan/folder_epub --convert-only
 
-# Bước 2: upload thử 3 truyện đầu của batch mới nhất lên D1 + R2
+# Bước 2: xem trước danh sách sẽ upload sau khi lọc truyện đã có trong Supabase cũ
+python batch_epub_upload.py --upload-only --dry-run
+```
+
+Nếu danh sách dry-run ổn, upload thử vài truyện đầu:
+
+```bash
+# Upload thử 3 truyện đầu chưa trùng Supabase
 python batch_epub_upload.py --upload-only --upload-limit 3
 ```
 
-Nếu 3 truyện đầu ổn, upload các truyện tiếp theo theo từng nhóm:
+Sau khi test 3 truyện đầu ổn, upload tiếp phần còn lại:
 
 ```bash
-# Bỏ qua 3 truyện đã upload, upload tiếp 3 truyện
-python batch_epub_upload.py --upload-only --upload-skip 3 --upload-limit 3
-
-# Hoặc upload toàn bộ phần còn lại trong batch mới nhất
+# Bỏ qua 3 truyện chưa trùng đã upload, upload tiếp toàn bộ phần còn lại
 python batch_epub_upload.py --upload-only --upload-skip 3
 ```
 
-Nếu muốn convert lại cả batch khi folder output đã tồn tại:
+Hoặc upload theo từng nhóm nhỏ:
+
+```bash
+# Bỏ qua 3 truyện chưa trùng đã upload, upload tiếp 5 truyện
+python batch_epub_upload.py --upload-only --upload-skip 3 --upload-limit 5
+```
+
+Nếu muốn convert lại từ đầu khi folder output đã tồn tại:
 
 ```bash
 python batch_epub_upload.py /duong/dan/folder_epub --convert-only --overwrite-existing
@@ -367,11 +381,37 @@ python batch_epub_upload.py /duong/dan/folder_epub --convert-only --overwrite-ex
 
 Ghi chú quan trọng:
 
-- Batch script hiện upload bằng `upload_new_d1_r2.py`, tức là **D1 + R2**, không phải Supabase cũ.
-- Tool chỉ upload các folder nằm trong manifest batch mới nhất: `.batch_epub_upload_latest.json`.
-- Mỗi folder được batch tạo có marker `.batch_epub_upload.json` để tránh nhầm với các folder truyện cũ đã convert thủ công.
+- Batch script hiện upload bằng `upload_new_d1_r2.py`, tức là **Cloudflare D1 + R2**, không phải Supabase cũ.
+- Mặc định batch script kiểm tra `title=` trong Supabase cũ và **skip truyện đã tồn tại** để tránh trùng trên web.
+- `upload_new_d1_r2.py` cũng tự check Supabase khi upload lẻ.
+- Nếu cố ý muốn upload cả truyện đã có Supabase lên D1/R2, thêm `--allow-supabase-duplicates`.
+- Tool chỉ upload các folder nằm trong manifest batch mới nhất: `chapters/.batch_epub_upload_latest.json`.
+- Mỗi folder được batch tạo có marker `.batch_epub_upload.json`, giúp phân biệt với folder truyện cũ đã convert thủ công.
 - SEO metadata mặc định dùng Ollama model `qwen3:14b`; có thể đổi bằng `--ollama-model`.
-- Ranking được random trong khoảng `50-100` khi convert.
+- Ranking được random trong khoảng `50-100` khi convert. Số càng nhỏ càng hiện trước trên trang chủ.
+
+Kiểm tra batch đã upload lên nguồn nào:
+
+```bash
+python check_batch_upload_status.py
+```
+
+Output sẽ cho biết từng truyện đang ở trạng thái:
+
+```text
+UPLOADED_D1       = đã upload lên D1/R2
+EXISTS_SUPABASE   = đã có ở Supabase cũ, batch sẽ skip mặc định
+D1+SUPABASE_DUP   = bị trùng cả 2 nguồn
+NOT_UPLOADED      = chưa upload
+```
+
+Kiểm tra object R2 so với metadata D1:
+
+```bash
+python analyze_r2_storage.py
+python analyze_r2_storage.py --prefix chapters/
+python analyze_r2_storage.py --prefix covers/
+```
 
 #### 6. Biến môi trường trên Vercel
 
@@ -568,9 +608,12 @@ ORDER BY click_count DESC;
 | Tạo schema D1 | `python init_d1_schema.py` |
 | Upload thử 3 chương lên D1 + R2 | `python upload_new_d1_r2.py --translated-dir chapters/... --limit 3` |
 | Upload 1 truyện mới lên D1 + R2 | `python upload_new_d1_r2.py --translated-dir chapters/...` |
-| Batch convert nhiều EPUB bằng AI SEO | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only` |
+| Batch convert nhiều EPUB bằng Ollama SEO | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only` |
+| Xem trước batch sẽ upload | `python batch_epub_upload.py --upload-only --dry-run` |
 | Batch upload thử 3 truyện lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-limit 3` |
 | Batch upload phần còn lại lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-skip 3` |
+| Check trạng thái batch | `python check_batch_upload_status.py` |
+| Check storage R2/D1 | `python analyze_r2_storage.py` |
 | Xem truyện trong DB | `python manage_books.py list` |
 | Xem chương của truyện | `python manage_books.py list-chapters "Tên"` |
 | Xóa 1 chương | `python manage_books.py delete-chapter "Tên" 5` |
@@ -966,14 +1009,6 @@ Nếu một file lỗi, importer tiếp tục với các file khác và ghi lỗ
 
 ### 10.3. Chiến lược theo định dạng
 
-#### EPUB
-
-- Đọc metadata chuẩn EPUB.
-- Ưu tiên thứ tự spine/navigation của EPUB.
-- Giữ định dạng đoạn, nhấn mạnh và tiêu đề cơ bản.
-- Trích xuất ảnh bìa nếu có.
-- Bỏ CSS/script nhúng không cần thiết.
-
 #### TXT
 
 - Tự phát hiện UTF-8, UTF-16 và các encoding tiếng Việt phổ biến.
@@ -1034,131 +1069,7 @@ Nguyên tắc:
 
 Không sao chép nội dung SEO từ website tham khảo.
 
-## 13. Hiệu năng
 
-- Render phía server cho trang danh sách, truyện và chương.
-- Phân trang database và chỉ chọn các cột cần thiết.
-- Index cho `slug`, `updated_at`, `status`, tác giả và tìm kiếm tên.
-- Lazy-load ảnh bìa ngoài màn hình.
-- Ảnh bìa được resize/nén khi import.
-- Cache metadata và danh sách phổ biến; không cache sai nội dung chương mới.
-- Không đưa file truyện vào bundle deploy của Next.js.
-- Danh sách chương lớn được tải theo trang.
-
-## 14. Bảo mật và độ bền dữ liệu
-
-- Sanitize HTML nhập từ EPUB/DOCX trước khi lưu hoặc render.
-- Không cho phép đường dẫn file thoát khỏi thư mục nguồn khi importer xử lý archive.
-- Giới hạn kích thước file và tổng số chương hợp lý.
-- Service-role key chỉ dùng ở importer/server, không gửi xuống browser.
-- Database local không mở trực tiếp ra Internet.
-- Có lệnh backup database và storage trước khi migrate.
-- Không commit `.env`, database dump, file truyện hoặc secret vào Git.
-
-## 15. Cấu trúc thư mục dự kiến
-
-```text
-web/
-├── README.md
-├── package.json
-├── next.config.ts
-├── app/
-│   ├── page.tsx
-│   ├── danh-sach/
-│   ├── tim-kiem/
-│   ├── the-loai/[slug]/
-│   └── truyen/[bookSlug]/
-│       ├── page.tsx
-│       └── [chapterSlug]/page.tsx
-├── components/
-│   ├── layout/
-│   ├── books/
-│   ├── reader/
-│   ├── search/
-│   └── ads/
-├── lib/
-│   ├── db/
-│   ├── storage/
-│   ├── search/
-│   └── validation/
-├── importer/
-│   ├── importer.py
-│   ├── parsers/
-│   ├── tests/
-│   └── requirements.txt
-├── supabase/
-│   ├── config.toml
-│   ├── migrations/
-│   └── seed.sql
-├── tests/
-└── data/
-    ├── incoming/        # không commit
-    ├── storage/         # không commit nếu dùng driver local nhẹ
-    └── import-reports/  # không commit
-```
-
-Cấu trúc thực tế có thể được tinh chỉnh khi scaffold dự án, nhưng ranh giới giữa website, importer và database migration phải được giữ rõ ràng.
-
-## 16. Kiểm thử
-
-### Website
-
-- Unit test cho hàm tạo slug, định dạng dữ liệu và tìm kiếm.
-- Component test cho card truyện và reader controls.
-- End-to-end test cho các luồng:
-  - Tìm truyện → mở chi tiết → đọc chương.
-  - Lọc thể loại/trạng thái → đổi trang.
-  - Đọc chương → chuyển chương → tải lại vẫn giữ tiến độ.
-- Kiểm tra responsive trên các kích thước phổ biến.
-
-### Importer
-
-- Fixture EPUB/TXT/DOCX nhỏ, không dùng thư viện truyện thật trong Git.
-- Test encoding TXT.
-- Test nhận diện nhiều kiểu tiêu đề chương.
-- Test EPUB không có bìa/metadata.
-- Test chạy lại không tạo dữ liệu trùng.
-- Test cập nhật file đã thay đổi.
-- Test một file lỗi không làm dừng toàn bộ batch.
-
-## 17. Các giai đoạn thực hiện
-
-### Giai đoạn 1 — Khởi tạo local
-
-- Scaffold Next.js/TypeScript/Tailwind.
-- Thiết lập Supabase Local và migration đầu tiên.
-- Tạo dữ liệu mẫu nhỏ.
-- Tạo layout/header/footer/responsive cơ bản.
-
-### Giai đoạn 2 — Chức năng đọc
-
-- Trang chủ và card truyện.
-- Danh sách, thể loại, tìm kiếm và bộ lọc.
-- Chi tiết truyện và danh sách chương.
-- Reader và lưu tiến độ local.
-
-### Giai đoạn 3 — Importer
-
-- Scan/report.
-- EPUB và TXT trước.
-- DOCX và DOC sau khi EPUB/TXT ổn định.
-- Deduplicate, update và báo cáo lỗi.
-
-### Giai đoạn 4 — Hoàn thiện
-
-- SEO, sitemap và structured data.
-- Tối ưu ảnh/cache/query.
-- Ad slots tắt mặc định.
-- Kiểm thử responsive và end-to-end.
-- Backup/restore local.
-
-### Giai đoạn 5 — Deploy
-
-- Đẩy source code lên GitHub.
-- Tạo Supabase Cloud.
-- Áp dụng migration và chuyển dữ liệu.
-- Deploy Next.js lên Vercel.
-- Kiểm tra URL production, logs và sitemap.
 
 
 #### Domain page
@@ -1207,6 +1118,241 @@ python3 tools/webnovel_to_md.py \
   --placeholder-on-blocked \
   --max-consecutive-blocked 20
 
+  1820  python manage_books.py delete-book "Xuyên Thành Nữ Chủ Sủng Vật Xà" --yes
+ 1821  python manage_books.py delete-book "Sát Thủ Cho Mỹ Nữ Thuê Phòng" --yes
+ 1822  python manage_books.py delete-book "Âm Hôn: Ma Vương Đừng Chạm Vào Ta!" --yes
+ 1823  python manage_books.py delete-book "Phúc Hắc Cuồng Nữ: Khuynh Thành Triệu Hồi Sư Vô Ý Bảo Bảo" --yes
+ 1824  python manage_books.py delete-book "Phúc Hắc Cuồng Nữ..." --yes
+ 1825  python manage_books.py delete-book "Phong Lưu Chân Tiên" --yes
+ 1826  python manage_books.py delete-book "Đô Thị Tàng Kiều" --yes
+ 1827  python manage_books.py delete-book "Huyền Huyễn Bắt Đầu Từ Hỗn Độn Thể" --yes
+ 1828  python manage_books.py delete-book "Tru Tiên 2" --yes
+ 1829  python manage_books.py delete-book "Cửu Chuyển Tinh Thần Biến" --yes
+ 1830  python manage_books.py delete-book "Chưởng Môn Hoài Dựng, Quan Ngã Nhất Cá Tạp Dịch Thập Yêu Sự" --yes
+ 1831  python manage_books.py delete-book "Sư Phụ Lại Mất Tích Rồi" --yes
+ 1832  python manage_books.py delete-book "Đại La Thiên Tôn 2: Vĩnh Hằng Chi Mộng" --yes
+ 1833  python manage_books.py delete-book "Nữ Phụ Tiên Lộ Gập Ghềnh" --yes
+ 1834  python manage_books.py delete-book "Tiểu Bạch Kiểm Liệp Diễm" --yes
+ 1835  python manage_books.py delete-book "Sát Đấu Truyền Kỳ" --yes
+ 1836  python manage_books.py delete-book "Tiên Ấn" --yes
+ 1837  python manage_books.py delete-book "Chứng Hồn Đạo" --yes
+ 1838  python manage_books.py delete-book "Hỗn Nguyên Hệ Thống" --yes
+ 1839  python manage_books.py delete-book "Sư Huynh, Rất Vô Lương" --yes
+ 1840  python manage_books.py delete-book "Dương Thanh Ký" --yes
+ 1841  python manage_books.py delete-book "Thần Cấp Tiên Giới Hệ Thống" --yes
+ 1842  python manage_books.py delete-book "Phật Bản Thị Đạo" --yes
+ 1843  python manage_books.py delete-book "Hoàng Gia Hồn Giả Tại Tu Chân Giới" --yes
+ 1844  python analyze_chapter_storage.py
+ 1845  python analyze_chapter_storage.py --delete --yes
+ 1846  python analyze_chapter_storage.py
+ 1847  python manage_books.py delete-book "Con Đường Bá Chủ" --yes
+ 1848  python manage_books.py delete-book "Long Vương Truyền Thuyết" --yes
+ 1849  python manage_books.py delete-book "Đấu Phá Hậu Truyện" --yes
+ 1850  python manage_books.py delete-book "Đại La Thiên Tôn" --yes
+ 1851  python manage_books.py delete-book "Thiên Ma" --yes
+ 1852  python manage_books.py delete-book "Bách Biến Dạ Hành" --yes
+ 1853  python manage_books.py delete-book "Trọng Sinh Tại Nhẫn Giới" --yes
+ 1854  python manage_books.py delete-book "Vĩnh Hằng Chi Tâm" --yes
+ 1855  python manage_books.py delete-book "Nhật Kí Thần Linh" --yes
+ 1856  python manage_books.py delete-book "Tối Cường Hệ Thống" --yes
+ 1857  python manage_books.py delete-book "Tà Băng Ngạo Thiên" --yes
+ 1858  python manage_books.py delete-book "Tà Vương Đế Phi: Nghịch Thiên Thuần Thú Sư" --yes
+ 1859  python manage_books.py delete-book "Tà Băng Ngạo Thiên" --yes
+ 1860  python manage_books.py delete-book "Tà Vương Đế Phi: Nghịch Thiên Thuần Thú Sư" --yes
+ 1861  python manage_books.py delete-book "Tuyệt Đỉnh Vô Tình Tuyết Lăng" --yes
+ 1862  python manage_books.py delete-book "Trùng Sinh Chi Tặc Hành Thiên Hạ" --yes
+ 1863  python manage_books.py delete-book "Phàm Tiên Chi Lữ" --yes
+ 1864  python manage_books.py delete-book "Trảm Tiên (Convert)" --yes
+ 1865  python manage_books.py delete-book "Khoái Lạc Hệ Thống" --yes
+ 1866  python manage_books.py delete-book "Chân Huyết Lệ" --yes
+ 1867  python manage_books.py delete-book "Lạc Thiên Ký" --yes
+ 1868  python manage_books.py delete-book "Nghịch Thiên Ngự Thú Sư" --yes
+ 1869  python manage_books.py delete-book "Chiến Đội Lập Kỳ" --yes
+ 1870  python manage_books.py delete-book "Cửu Kiếp Hồ Tình" --yes
+ 1871  python manage_books.py delete-book "Yêu Thần Ký" --yes
+ 1872  python manage_books.py delete-book "Vũ Thần Không Gian" --yes
+ 1873  python manage_books.py delete-book "Ngự Thiên Thần Đế" --yes
+ 1874  python manage_books.py delete-book "Tôn Thượng" --yes
+ 1875  python manage_books.py delete-book "Thần Trong Các Vị Thần" --yes
+ 1876  python manage_books.py delete-book "Trùng Sinh Chi Tối Cường Kiếm Thần" --yes
+ 1877  python manage_books.py delete-book "Hạt Giống Tiến Hóa" --yes
+ 1878  python analyze_chapter_storage.py
+ 1879  python manage_books.py delete-book "Anh Hùng Chí" --yes
+ 1880  python manage_books.py delete-book "Phúc Hắc Cuồng Nữ: Khuynh Thành Triệu Hồi Sư" --yes
+ 1881  python manage_books.py delete-book "Hoàng Long Chân Nhân Dị Giới Du" --yes
+ 1882  python manage_books.py delete-book "Vô Cực Chưởng Khống Giả" --yes
+ 1883  python manage_books.py delete-book "Tuyệt Thế Thần Y: Phúc Hắc Đại Tiểu Thư" --yes
+ 1884  python manage_books.py delete-book "Trường Sinh Đảo" --yes
+ 1885  python manage_books.py delete-book "Triệu Hoán Sư Khuynh Thành" --yes
+ 1886  python manage_books.py delete-book "Dịch Cân Kinh" --yes
+ 1887  python manage_books.py delete-book "Tướng Minh" --yes
+ 1888  python manage_books.py delete-book "Chọc Lầm Xà Vương Lưu Manh" --yes
+ 1889  python manage_books.py delete-book "Kí Ức Về Một Thiên Thần" --yes
+ 1890  python manage_books.py delete-book "Cực Phẩm Cuồng Thiếu" --yes
+ 1891  python manage_books.py delete-book "Nhất Thế Chi Tôn" --yes
+ 1892  python manage_books.py delete-book "Phệ Linh Yêu Hồn" --yes
+ 1893  python manage_books.py delete-book "Dị Thế Ma Hoàng" --yes
+ 1894  python manage_books.py delete-book "Long Ngạo Chiến Thần" --yes
+ 1895  python manage_books.py delete-book "Nhật Nguyệt Đương Không" --yes
+ 1896  python analyze_chapter_storage.py --delete --yes
+ 1897  python analyze_chapter_storage.py
+ 1898  python manage_books.py delete-book "Trói Buộc Linh Hồn" --yes
+ 1899  python manage_books.py delete-book "Cửu Vực Tà Hoàng
+ 1900  " --yes
+ 1901  python manage_books.py delete-book "Cửu Vực Tà Hoàng" --yes
+ 1902  python manage_books.py delete-book "Trò Chơi Tử Vong Luân Hồi" --yes
+ 1903  python manage_books.py delete-book "Võ Hiệp Huyền Huyễn Chi Sát Lục Hệ Thống" --yes
+ 1904  exit
+ 1905  cd /home/thanh/Documents/tool_code/code_tool_thread/web/importer
+ 1906  source venv/bin/activate
+ 1907  python analyze_chapter_storage.py
+ 1908  python analyze_chapter_storage.py --delete --yes --limit 1000
+ 1909  python analyze_chapter_storage.py --delete --yes
+ 1910  python analyze_chapter_storage.py --delete --yes --limit 1000
+ 1911  python analyze_chapter_storage.py
+ 1912  python analyze_chapter_storage.py --top 50 --sample 50
+ 1913  python upload_translated.py --translated-dir chapters/Xich_Tam_Tuan_Thien_Translated --force-chapter 1235
+
+ 1917  python analyze_chapter_storage.py
+ 1918  python analyze_chapter_storage.py --delete --yes
+ 1919  python analyze_chapter_storage.py
+ 1920  python manage_books.py list
+ 1921  sudo shutdown -f now
+ 1922  code
+ 1923  cd /home/thanh/Documents/tool_code/code_tool_thread/web/importer/
+ 1924  source venv/bin/activate
+ 1925  python manage_books.py delete-book "Đệ Nhất Kiếm Thần" --yes
+ 1926  python manage_books.py delete-book "Hợp Thể Song Tu" --yes
+ 1927  python manage_books.py delete-book "Đại Thánh Truyện" --yes
+ 1928  python manage_books.py delete-book "Tiên Đạo Cầu Sách" --yes
+ 1929  python manage_books.py delete-book "Ngẫu Ngộ Thành Tiên" --yes
+ 1930  python manage_books.py delete-book "Tam Thái Tử" --yes
+ 1931  python manage_books.py delete-book "Vạn Giới Pháp Thần" --yes
+ 1932  python manage_books.py delete-book "Cảm Nhiễm Thể" --yes
+ 1933  python manage_books.py delete-book "Liên Minh Chi Thần" --yes
+ 1934  python manage_books.py delete-book "Độc Bộ" --yes
+ 1935  python manage_books.py delete-book "Pháp Sư Đôi Mươi" --yes
+ 1936  python manage_books.py delete-book "Thuẫn Kích" --yes
+ 1937  python analyze_chapter_storage.py
+ 1938  python analyze_chapter_storage.py --delete --yes
+ 1939  python manage_books.py delete-book "Trù Đạo Tiên Đồ" --yes
+ 1940  python manage_books.py delete-book "Kiếm Phệ Thiên Hạ" --yes
+ 1941  python manage_books.py delete-book "Khủng Long Thần Giới" --yes
+ 1942  python manage_books.py delete-book "Tử Dương" --yes
+ 1943  python manage_books.py delete-book "Ma Thần Thiên Quân" --yes
+ 1944  python manage_books.py delete-book "Tà Ngự Thiên Kiều" --yes
+ 1945  python manage_books.py delete-book "Phế Sài Muốn Nghịch Thiên: Ma Đế Cuồng Phi" --yes
+ 1946  python manage_books.py delete-book "Đô Thị Tà Tu" --yes
+ 1947  python manage_books.py delete-book "Thương Thiên" --yes
+ 1948  python manage_books.py delete-book "Nhân Gian Băng Khí" --yes
+ 1949  python manage_books.py delete-book "Dị Giới Dược Sư" --yes
+ 1950  python manage_books.py delete-book "Mạo Bài Đại Anh Hùng" --yes
+ 1951  python manage_books.py delete-book "Thịnh Đường Vô Yêu" --yes
+ 1952  python manage_books.py delete-book "Chân Lộ" --yes
+ 1953  python manage_books.py delete-book "Vũ Luyện Điên Phong" --yes
+ 1954  python manage_books.py delete-book "Đế Tôn" --yes
+ 1955  python manage_books.py delete-book "Đế Bá" --yes
+ 1956  python manage_books.py delete-book "Dương Thần" --yes
+ 1957  python manage_books.py delete-book "Dạ Vô Cương" --yes
+ 1958  python manage_books.py delete-book "Tiên Ngạo" --yes
+ 1959  python manage_books.py delete-book "Vương Thị Tiên Lộ" --yes
+ 1960  python manage_books.py delete-book "Thương Lam Đỉnh" --yes
+ 1961  python manage_books.py delete-book "Thiên Ảnh
+ 1962  " --yes
+ 1963  python manage_books.py delete-book "Thiên Ảnh" --yes
+ 1964  python manage_books.py delete-book "Tru Tiên: Luân Hồi" --yes
+ 1965  python manage_books.py delete-book "Trọng Sinh Tiêu Dao Đạo" --yes
+ 1966  python manage_books.py delete-book "Luân Hồi" --yes
+ 1967  python manage_books.py delete-book "Linh Khí Bức Nhân" --yes
+ 1968  python manage_books.py delete-book "Ngũ Hành Thiên" --yes
+ 1969  python manage_books.py delete-book "Bất Diệt Thánh Linh" --yes
+ 1970  python manage_books.py delete-book "Thần Ma Chi Mộ" --yes
+ 1971  python manage_books.py delete-book "Tu Chân Liêu Thiên Quần" --yes
+ 1972  python manage_books.py delete-book "Tạp Dịch Ma Tu" --yes
+ 1973  python manage_books.py delete-book "Đái Trứ Vô Hạn Hỏa Lực Cẩu Đầu Kỹ Năng Xuyên Việt Tiên Hiệp" --yes
+ 1974  python manage_books.py delete-book "Quang Minh Giáo Đình Tại Tu Chân Thế Giới" --yes
+ 1975  python manage_books.py delete-book "Thiên Hồng Ma Đạo" --yes
+ 1976  python manage_books.py delete-book "Tu Chân Giả Tại Đấu Phá Thương Khung" --yes
+ 1977  python manage_books.py delete-book "Vô Song Chi Chủ" --yes
+ 1978  python manage_books.py delete-book "Siêu Cấp Đường Tăng Sấm Tây Du" --yes
+ 1979  python manage_books.py delete-book "Ninh Tiểu Nhàn Ngự Thần Lục" --yes
+ 1980  python manage_books.py delete-book "Phong Lưu Tiêu Dao Thần" --yes
+ 1981  python manage_books.py delete-book "Nhất Cá Thái Giám Sấm Thế Giới" --yes
+ 1982  python manage_books.py delete-book "Thần Ấn Vương Tọa" --yes
+ 1983  python manage_books.py delete-book "Thiên Hạ Chí Tôn" --yes
+ 1984  python manage_books.py delete-book "Thần Đạo Thịnh Vượng" --yes
+ 1985  history
+ 1986  python analyze_chapter_storage.py
+ 1987  python analyze_chapter_storage.py --delete --yes
+ 1988  sudo shutdown -f now
+ 1989  code
+ 1990  cd /home/thanh/Documents/tool_code/code_tool_thread/web/
+ 1991  ls
+ 1992  source venv/bin/activate
+ 1993  cd importer/
+ 1994  source venv/bin/activate
+ 1995  python analyze_chapter_storage.py
+ 1996  python manage_books.py delete-book "Thương Thiên" --yes
+ 1997  python manage_books.py delete-book "Long Phù" --yes
+ 1998  python manage_books.py delete-book "Nghịch Thần Ký" --yes
+ 1999  python manage_books.py delete-book "Thái Dịch" --yes
+ 2000  python manage_books.py delete-book "Phong Ấn Tiên Tôn" --yes
+
+ 2003  python manage_books.py delete-book "Đại Kiếp Chủ" --yes
+ 2004  python manage_books.py delete-book "Ngã Thị Chí Tôn" --yes
+ 2005  python manage_books.py delete-book "Tu Chân Tứ Vạn Niên" --yes
+ 2006  python manage_books.py delete-book "Võ Đạo Tinh Hồn" --yes
+ 2007  python manage_books.py delete-book "Thần Tiên Cũng Có Giang Hồ" --yes
+ 2008  python manage_books.py delete-book "Tuyệt Thế Kiếm Thần" --yes
+ 2009  python manage_books.py delete-book "Lạc Thiên Tiên Đế" --yes
+ 2010  python manage_books.py delete-book "Ta Có Trăm Vạn Ức Công Đức (Ngã Hữu Bách Vạn Ức Công Đức)" --yes
+ 2011  python manage_books.py delete-book "Tiên Tuyệt" --yes
+ 2012  python manage_books.py delete-book "Nhất Ngôn Thông Thiên" --yes
+ 2013  python analyze_chapter_storage.py --delete --yes
+ 2014  python analyze_chapter_storage.py
+ 2015  python manage_books.py delete-book "Vạn Cổ Chí Tôn" --yes
+ 2016  python manage_books.py delete-book "Bất Hủ Phàm Nhân" --yes
+
+ 2018  python manage_books.py delete-book "Băng Hỏa Ma Trù" --yes
+ 2019  python manage_books.py delete-book "Tiên Uyên" --yes
+ 2020  python manage_books.py delete-book "Tiên Uyên Chi Lộ" --yes
+ 2021  python manage_books.py delete-book "Tiên Luyện Chi Lộ" --yes
+ 2022  python manage_books.py delete-book "Cửu Vực Phàm Tiên" --yes
+ 2023  python manage_books.py delete-book "Tiên Thần Dịch" --yes
+ 2024  python manage_books.py delete-book "Dược Thần (Dị Giới Dược Thần)" --yes
+ 2025  python manage_books.py delete-book "Thú Thần Tu Tiên" --yes
+ 2026  python manage_books.py delete-book "Phong Ngự" --yes
+ 2027  python manage_books.py delete-book "Tinh Vân Đồ Lục Truyện" --yes
+ 2028  python manage_books.py delete-book "Xuyên Toa Chư Thiên" --yes
+ 2029  history
+ 2030  python analyze_chapter_storage.py --delete --yes
+ 2031  python analyze_chapter_storage.py
+ 2032  python manage_books.py delete-book "Thí Thiền" --yes
+ 2033  python manage_books.py delete-book "Tiên Môn Khí Thiếu" --yes
+ 2034  python manage_books.py delete-book "Nhẫn Thuật Trà Trộn Dị Giới" --yes
+ 2035  python manage_books.py delete-book "Long Văn Chí Tôn" --yes
+ 2036  python manage_books.py delete-book "Tinh Vân Đồ Lục Truyện" --yes
+ 2037  python manage_books.py delete-book "Ta Không Thành Tiên (Ngã Bất Thành Tiên)
+" --yes
+ 2038  python manage_books.py delete-book "Ta Không Thành Tiên (Ngã Bất Thành Tiên)" --yes
+ 2039  python manage_books.py delete-book "Đồ Thần Đường" --yes
+ 2040  python manage_books.py delete-book "Xuyên Toa Chư Thiên" --yes
+ 2041  python manage_books.py delete-book "Cửu Châu Đại Lục" --yes
+ 2042  python manage_books.py delete-book "Thái Cổ Thần Vương" --yes
+ 2043  python manage_books.py delete-book "Vĩnh Hằng Chí Tôn" --yes
+ 2044  python manage_books.py delete-book "Thiên Long Lệnh Bài" --yes
+ 2045  python manage_books.py delete-book "Lưu Manh Kiếm Khách Tại Dị Thế" --yes
+ 2046  python manage_books.py delete-book "Linh Trù Tạp Dịch Hiện Đại Sinh Hoạt" --yes
+ 2047  python manage_books.py delete-book "Dung Binh Thiên Hạ" --yes
+ 2048  python manage_books.py delete-book "Bắt Đầu Bất Hủ Đại Đế, Chế Tạo Vạn Cổ Tiên Tông" --yes
+ 2049  python manage_books.py delete-book "Quân Lâm Tam Thiên Thế Giới" --yes
+ 2050  python manage_books.py delete-book "Tiên Thần Dịch" --yes
+ 2051  python manage_books.py delete-book "Nga Mỵ" --yes
+ 2052  python manage_books.py delete-book "Đế Diệt Thương Khung" --yes
+ 2053  python manage_books.py delete-book "Chí Tôn Tiên Đạo" --yes
+ 2054  history
+
+TODO: need to add R2 comment table
 
 ollama pull qwen2.5-coder:14b
 

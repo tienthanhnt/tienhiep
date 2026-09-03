@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import AdsterraSocialBar from "@/components/AdsterraSocialBar";
 import { getSiteUrl, SITE_NAME } from "@/lib/seo";
 import "./globals.css";
 
@@ -86,8 +85,6 @@ export default function RootLayout({
             <p>&copy; 2026</p>
           </div>
         </footer>
-
-        <AdsterraSocialBar />
       </body>
     </html>
   );

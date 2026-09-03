@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
 import AdsterraNativeBanner from './AdsterraNativeBanner';
-import AdsterraPopunder, { NEXT_CHAPTER_EVENT } from './AdsterraPopunder';
 import BookComments from './BookComments';
 import { getBookPath, getChapterPath } from '@/lib/seo';
 
@@ -31,7 +30,6 @@ const RECENT_READING_LIMIT = 2;
 const TOC_PAGE_SIZE = 100;
 const VIEW_TRACKING_KEY = 'tien-hiep-lau:tracked-book-views';
 const VIEW_TRACKING_INTERVAL_MS = 30 * 60 * 1000;
-const POPUNDER_NEXT_CLICK_COUNT_KEY = 'tien-hiep-lau:adsterra-pop-next-click-count';
 
 export default function ChapterReader({
   bookId,
@@ -56,7 +54,6 @@ export default function ChapterReader({
   const [tocError, setTocError] = useState('');
   const [tocSearchResults, setTocSearchResults] = useState<ChapterNavItem[] | null>(null);
   const [tocSearchLoading, setTocSearchLoading] = useState(false);
-  const [nextClickCount, setNextClickCount] = useState(0);
   const trackedViewKey = useRef('');
 
   const bookPath = getBookPath({ id: bookId, title: bookTitle });
@@ -84,14 +81,6 @@ export default function ChapterReader({
       String(chapter.chapter_number).includes(keyword)
     ));
   }, [currentTocChapters, tocQuery, tocSearchResults]);
-
-  useEffect(() => {
-    try {
-      setNextClickCount(Number(window.sessionStorage.getItem(POPUNDER_NEXT_CLICK_COUNT_KEY) || 0));
-    } catch {
-      setNextClickCount(0);
-    }
-  }, []);
 
   useEffect(() => {
     const viewKey = `${bookId}:${chapterNumber}`;
@@ -304,19 +293,6 @@ export default function ChapterReader({
     );
   };
 
-  const recordNextChapterClick = () => {
-    setNextClickCount((current) => {
-      const next = current + 1;
-      try {
-        window.sessionStorage.setItem(POPUNDER_NEXT_CLICK_COUNT_KEY, String(next));
-        window.dispatchEvent(new CustomEvent(NEXT_CHAPTER_EVENT, { detail: { clickCount: next } }));
-      } catch {
-        // Ads must never block chapter navigation.
-      }
-      return next;
-    });
-  };
-
   const renderTocButton = () => (
     <button
       type="button"
@@ -337,8 +313,6 @@ export default function ChapterReader({
 
   return (
     <div className="max-w-3xl mx-auto py-4 flex flex-col gap-6">
-      <AdsterraPopunder nextClickCount={nextClickCount} />
-
       <div className="fixed left-0 right-0 top-0 z-[55] h-0.5 bg-transparent">
         <div
           className="h-full bg-[#B99654] transition-[width] duration-150"
@@ -439,7 +413,7 @@ export default function ChapterReader({
 
         {renderTocButton()}
 
-        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →', recordNextChapterClick)}
+        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
 
       {showToc && (
@@ -600,7 +574,7 @@ export default function ChapterReader({
 
         {renderTocButton()}
 
-        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →', recordNextChapterClick)}
+        {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
 
       {typeof bookId === 'number' && (
