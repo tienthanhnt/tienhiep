@@ -444,6 +444,16 @@ Hiện web đã hỗ trợ:
 
 Tạm thời chưa ghi comment/view cho truyện `new-*` để tránh ghi nhầm vào Supabase cũ. Nếu cần, tạo bảng comment/view riêng trong D1 ở bước sau.
 
+#### 8. Cache và chặn bot xấu
+
+Để giảm Vercel Function Invocations:
+
+- Trang đọc chương cache/revalidate 7 ngày.
+- Nội dung chương từ Storage/R2 cache/revalidate 30 ngày.
+- API mục lục chương `/api/books/{bookId}/chapters` cache 24 giờ.
+- `src/middleware.ts` chặn một số crawler/scraper phổ biến như Ahrefs, Semrush, MJ12, DotBot, Bytespider, một số AI bot và client script thô.
+- Googlebot/Bingbot/CocCocBot và một số bot search lớn vẫn được allow để chưa ảnh hưởng SEO chính.
+
 ---
 
 ### BƯỚC 4 — Quản Lý Truyện

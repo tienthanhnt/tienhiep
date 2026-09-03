@@ -6,8 +6,8 @@ import { getNewBookPublicId, isNewBookIdentifier, queryD1 } from '@/lib/d1';
 import { resolveBookId } from '@/lib/books';
 import { buildChapterDescription, getChapterPath, getCleanChapterTitle, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
-const CHAPTER_PAGE_REVALIDATE_SECONDS = 86400;
-const CHAPTER_CONTENT_REVALIDATE_SECONDS = 604800;
+const CHAPTER_PAGE_REVALIDATE_SECONDS = 7 * 24 * 60 * 60;
+const CHAPTER_CONTENT_REVALIDATE_SECONDS = 30 * 24 * 60 * 60;
 
 export const revalidate = CHAPTER_PAGE_REVALIDATE_SECONDS;
 export const runtime = 'nodejs';

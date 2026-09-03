@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getNewBookPublicId, isNewBookIdentifier, queryD1 } from "@/lib/d1";
 
 const PAGE_SIZE = 100;
-const CACHE_SECONDS = 3600;
+const CACHE_SECONDS = 24 * 60 * 60;
 
 function sanitizeKeyword(value: string) {
   return value.trim().replace(/[%*_]/g, "").slice(0, 80);
