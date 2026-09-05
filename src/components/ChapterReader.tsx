@@ -4,6 +4,7 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
+import AdsterraBanner4 from './AdsterraBanner4';
 import AdsterraNativeBanner from './AdsterraNativeBanner';
 import BookComments from './BookComments';
 import { getBookPath, getChapterPath } from '@/lib/seo';
@@ -540,14 +541,16 @@ export default function ChapterReader({
                   style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
                   dangerouslySetInnerHTML={{ __html: firstThird }}
                 />
+                {/* Banner 1 — ~1/3 mark */}
+                <AdsterraBanner className="my-8 py-4 border-y border-current/10" />
                 {/* Middle 1/3 */}
                 <div
                   className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
                   style={{ fontSize: `${fontSize}px`, lineHeight: '1.85' }}
                   dangerouslySetInnerHTML={{ __html: middleThird }}
                 />
-                {/* Banner 1 — ~2/3 mark */}
-                <AdsterraBanner className="my-8 py-4 border-y border-current/10" />
+                {/* Banner 2 — ~2/3 mark */}
+                <AdsterraBanner4 className="my-8 py-4 border-y border-current/10" />
                 {/* Final 1/3 */}
                 <div
                   className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"

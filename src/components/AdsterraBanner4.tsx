@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { isMobileViewport } from "@/lib/adGuards";
 
 interface AdsterraBanner4Props {
   className?: string;
@@ -12,7 +11,6 @@ export default function AdsterraBanner4({ className = "" }: AdsterraBanner4Props
   const [canLoadAd, setCanLoadAd] = useState(false);
 
   useEffect(() => {
-    if (isMobileViewport()) return;
     setCanLoadAd(true);
   }, []);
 

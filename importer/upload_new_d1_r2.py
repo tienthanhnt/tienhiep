@@ -162,6 +162,43 @@ def get_or_create_book(book_info: dict, cover_url: str) -> tuple[int, str]:
     return book_id, public_id
 
 
+def should_repair_cover(cover_url: str | None) -> bool:
+    return not cover_url or cover_url == DEFAULT_COVER
+
+
+def update_book_cover(book_id: int, cover_url: str) -> None:
+    d1_query(
+        "UPDATE books SET cover_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [cover_url, book_id],
+    )
+
+
+def upload_cover_only_new(translated_dir: str) -> None:
+    print(f"🖼️  Đang upload lại ảnh bìa D1 + R2 từ: {translated_dir}")
+
+    book_dir = Path(translated_dir)
+    if not book_dir.is_dir():
+        print(f"❌ Không tìm thấy thư mục: {translated_dir}")
+        return
+
+    book_info = read_book_info(str(book_dir))
+    existing_book = get_existing_book(book_info["title"])
+    if not existing_book:
+        print(f"❌ Không tìm thấy truyện '{book_info['title']}' trong D1. Hãy upload truyện trước.")
+        return
+
+    cover_url = upload_cover_image_r2(str(book_dir), book_info["title"], book_info["author"])
+    if cover_url == DEFAULT_COVER:
+        print("❌ Upload/tạo ảnh bìa thất bại, chưa cập nhật D1.")
+        return
+
+    book_id = int(existing_book["id"])
+    public_id = existing_book.get("public_id") or update_book_public_id(book_id)
+    update_book_cover(book_id, cover_url)
+    print(f"✅ Đã cập nhật cover_url cho '{book_info['title']}' ({public_id}).")
+    print(f"   {cover_url}")
+
+
 def get_existing_chapter_numbers(book_id: int) -> set[int]:
     rows = d1_rows("SELECT chapter_number FROM chapters WHERE book_id = ?", [book_id])
     return {int(row["chapter_number"]) for row in rows if row.get("chapter_number") is not None}
@@ -240,8 +277,15 @@ def upload_chapters_new(
 
     existing_book = get_existing_book(book_info["title"])
     if existing_book:
-        cover_url = existing_book.get("cover_url") or DEFAULT_COVER
-        print("🖼️  Truyện đã có trên D1 — bỏ qua upload lại ảnh bìa.")
+        existing_cover_url = existing_book.get("cover_url") or DEFAULT_COVER
+        if should_repair_cover(existing_cover_url):
+            print("🖼️  Truyện đã có trên D1 nhưng đang dùng ảnh mặc định — upload lại ảnh bìa.")
+            cover_url = upload_cover_image_r2(str(book_dir), book_info["title"], book_info["author"])
+            if cover_url == DEFAULT_COVER:
+                cover_url = existing_cover_url
+        else:
+            cover_url = existing_cover_url
+            print("🖼️  Truyện đã có trên D1 — bỏ qua upload lại ảnh bìa. Dùng --covers-only nếu muốn cập nhật bìa.")
     else:
         cover_url = upload_cover_image_r2(str(book_dir), book_info["title"], book_info["author"])
 
@@ -325,12 +369,21 @@ def main() -> int:
     parser.add_argument("--translated-dir", required=True, help="Thư mục *_Translated chứa .md và book_info.txt.")
     parser.add_argument("--limit", type=int, default=None, help="Chỉ upload N chương đầu để test.")
     parser.add_argument(
+        "--covers-only",
+        action="store_true",
+        help="Chỉ upload/tạo lại cover lên R2 và cập nhật cover_url trong D1, không xử lý chương.",
+    )
+    parser.add_argument(
         "--allow-supabase-duplicate",
         "--allow-supabase-duplicates",
         action="store_true",
         help="Cho phép upload lên D1/R2 dù truyện đã tồn tại trong Supabase cũ.",
     )
     args = parser.parse_args()
+    if args.covers_only:
+        upload_cover_only_new(args.translated_dir)
+        return 0
+
     upload_chapters_new(
         args.translated_dir,
         args.limit,

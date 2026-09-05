@@ -6,7 +6,7 @@ Nhưng chỉ trong khoảng khắc ngắn ngủi ấy, cảnh tượng trước 
 
 Tầng nồng vụ này rốt cuộc ẩn chứa điều gì? Giữa ban ngày, tại sao lại có nhiều du hồn hoành hành như vậy?
 
-Nguồn gốc của vô số quỷ hồn từ đâu ra? Dù tất cả dân chúng Tiểu Lâm trấn đều hóa thành lệ quỷ, cũng không thể có số lượng khổng lồ đến thế, gần như lấp đầy tầm mắt!
+ gốc của vô số quỷ hồn từ đâu ra? Dù tất cả dân chúng Tiểu Lâm trấn đều hóa thành lệ quỷ, cũng không thể có số lượng khổng lồ đến thế, gần như lấp đầy tầm mắt!
 
 Dĩ nhiên, mọi người lúc này đã biết, với mật độ du hồn dày đặc như vậy, toàn bộ Tiểu Lâm trấn… đã không còn người sống!
 

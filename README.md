@@ -26,6 +26,7 @@ web/importer/
 ├── translate_chapters.py              ← Dịch raw → Markdown
 ├── upload_translated.py               ← Upload lên Supabase cũ
 ├── upload_new_d1_r2.py                ← Upload truyện mới lên Cloudflare D1 + R2
+├── repair_d1_r2_covers.py             ← Upload lại cover hàng loạt cho truyện D1/R2
 ├── batch_epub_upload.py               ← Batch convert nhiều EPUB + upload lên D1/R2
 ├── check_batch_upload_status.py       ← Check batch đã upload/trùng nguồn nào
 ├── analyze_r2_storage.py              ← Check orphan/missing object trong R2 so với D1
@@ -324,12 +325,37 @@ Nếu OK, upload toàn bộ truyện:
 python upload_new_d1_r2.py --translated-dir chapters/Ten_Truyen_Translated
 ```
 
+Nếu chỉ muốn upload/tạo lại ảnh bìa lên R2 và cập nhật `cover_url` trong D1:
+
+```bash
+python upload_new_d1_r2.py --translated-dir chapters/Ten_Truyen_Translated --covers-only
+```
+
+Nếu nhiều truyện D1/R2 đang bị ảnh mặc định, repair cover hàng loạt bằng:
+
+```bash
+# Xem trước danh sách truyện đang thiếu/default cover, chưa upload và chưa cập nhật gì
+python repair_d1_r2_covers.py
+
+# Upload lại cover cho toàn bộ truyện đang thiếu/default cover
+python repair_d1_r2_covers.py --yes
+
+# Chỉ xử lý thử 5 truyện đầu
+python repair_d1_r2_covers.py --yes --limit 5
+
+# Ép upload lại cover cho mọi truyện D1 có folder local, kể cả cover đang ổn
+python repair_d1_r2_covers.py --all --yes
+```
+
+`repair_d1_r2_covers.py` match truyện bằng `title=` trong `book_info.txt` local với `title` trên D1. Script chỉ cập nhật bảng D1 mới, không đụng Supabase cũ.
+
 Tool sẽ:
 
 - Upload cover lên R2 theo prefix `covers/new/`.
 - Upload chương gzip lên R2 theo prefix `chapters/new-{id}/`.
 - Ghi metadata vào D1.
 - Tự bỏ qua chương đã có nếu chạy lại.
+- Nếu truyện đã có trên D1 nhưng đang dùng ảnh mặc định, tool sẽ tự thử upload lại cover.
 - In route mới sau khi upload, ví dụ:
 
 ```text
@@ -443,16 +469,6 @@ Hiện web đã hỗ trợ:
 - Sitemap có truyện D1 mới.
 
 Tạm thời chưa ghi comment/view cho truyện `new-*` để tránh ghi nhầm vào Supabase cũ. Nếu cần, tạo bảng comment/view riêng trong D1 ở bước sau.
-
-#### 8. Cache và chặn bot xấu
-
-Để giảm Vercel Function Invocations:
-
-- Trang đọc chương cache/revalidate 7 ngày.
-- Nội dung chương từ Storage/R2 cache/revalidate 30 ngày.
-- API mục lục chương `/api/books/{bookId}/chapters` cache 24 giờ.
-- `src/middleware.ts` chặn một số crawler/scraper phổ biến như Ahrefs, Semrush, MJ12, DotBot, Bytespider, một số AI bot và client script thô.
-- Googlebot/Bingbot/CocCocBot và một số bot search lớn vẫn được allow để chưa ảnh hưởng SEO chính.
 
 ---
 
@@ -618,6 +634,9 @@ ORDER BY click_count DESC;
 | Tạo schema D1 | `python init_d1_schema.py` |
 | Upload thử 3 chương lên D1 + R2 | `python upload_new_d1_r2.py --translated-dir chapters/... --limit 3` |
 | Upload 1 truyện mới lên D1 + R2 | `python upload_new_d1_r2.py --translated-dir chapters/...` |
+| Upload lại cover D1/R2 | `python upload_new_d1_r2.py --translated-dir chapters/... --covers-only` |
+| Xem trước cover D1/R2 cần repair | `python repair_d1_r2_covers.py` |
+| Repair cover mặc định hàng loạt D1/R2 | `python repair_d1_r2_covers.py --yes` |
 | Batch convert nhiều EPUB bằng Ollama SEO | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only` |
 | Xem trước batch sẽ upload | `python batch_epub_upload.py --upload-only --dry-run` |
 | Batch upload thử 3 truyện lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-limit 3` |
@@ -1128,7 +1147,6 @@ python3 tools/webnovel_to_md.py \
   --placeholder-on-blocked \
   --max-consecutive-blocked 20
 
-  1820  python manage_books.py delete-book "Xuyên Thành Nữ Chủ Sủng Vật Xà" --yes
  1821  python manage_books.py delete-book "Sát Thủ Cho Mỹ Nữ Thuê Phòng" --yes
  1822  python manage_books.py delete-book "Âm Hôn: Ma Vương Đừng Chạm Vào Ta!" --yes
  1823  python manage_books.py delete-book "Phúc Hắc Cuồng Nữ: Khuynh Thành Triệu Hồi Sư Vô Ý Bảo Bảo" --yes
@@ -1136,7 +1154,8 @@ python3 tools/webnovel_to_md.py \
  1825  python manage_books.py delete-book "Phong Lưu Chân Tiên" --yes
  1826  python manage_books.py delete-book "Đô Thị Tàng Kiều" --yes
  1827  python manage_books.py delete-book "Huyền Huyễn Bắt Đầu Từ Hỗn Độn Thể" --yes
- 1828  python manage_books.py delete-book "Tru Tiên 2" --yes
+
+
  1829  python manage_books.py delete-book "Cửu Chuyển Tinh Thần Biến" --yes
  1830  python manage_books.py delete-book "Chưởng Môn Hoài Dựng, Quan Ngã Nhất Cá Tạp Dịch Thập Yêu Sự" --yes
  1831  python manage_books.py delete-book "Sư Phụ Lại Mất Tích Rồi" --yes
@@ -1152,9 +1171,11 @@ python3 tools/webnovel_to_md.py \
  1841  python manage_books.py delete-book "Thần Cấp Tiên Giới Hệ Thống" --yes
  1842  python manage_books.py delete-book "Phật Bản Thị Đạo" --yes
  1843  python manage_books.py delete-book "Hoàng Gia Hồn Giả Tại Tu Chân Giới" --yes
+
  1844  python analyze_chapter_storage.py
  1845  python analyze_chapter_storage.py --delete --yes
  1846  python analyze_chapter_storage.py
+
  1847  python manage_books.py delete-book "Con Đường Bá Chủ" --yes
  1848  python manage_books.py delete-book "Long Vương Truyền Thuyết" --yes
  1849  python manage_books.py delete-book "Đấu Phá Hậu Truyện" --yes
@@ -1172,17 +1193,17 @@ python3 tools/webnovel_to_md.py \
  1861  python manage_books.py delete-book "Tuyệt Đỉnh Vô Tình Tuyết Lăng" --yes
  1862  python manage_books.py delete-book "Trùng Sinh Chi Tặc Hành Thiên Hạ" --yes
  1863  python manage_books.py delete-book "Phàm Tiên Chi Lữ" --yes
- 1864  python manage_books.py delete-book "Trảm Tiên (Convert)" --yes
- 1865  python manage_books.py delete-book "Khoái Lạc Hệ Thống" --yes
+
+
  1866  python manage_books.py delete-book "Chân Huyết Lệ" --yes
  1867  python manage_books.py delete-book "Lạc Thiên Ký" --yes
  1868  python manage_books.py delete-book "Nghịch Thiên Ngự Thú Sư" --yes
  1869  python manage_books.py delete-book "Chiến Đội Lập Kỳ" --yes
  1870  python manage_books.py delete-book "Cửu Kiếp Hồ Tình" --yes
- 1871  python manage_books.py delete-book "Yêu Thần Ký" --yes
+
  1872  python manage_books.py delete-book "Vũ Thần Không Gian" --yes
  1873  python manage_books.py delete-book "Ngự Thiên Thần Đế" --yes
- 1874  python manage_books.py delete-book "Tôn Thượng" --yes
+
  1875  python manage_books.py delete-book "Thần Trong Các Vị Thần" --yes
  1876  python manage_books.py delete-book "Trùng Sinh Chi Tối Cường Kiếm Thần" --yes
  1877  python manage_books.py delete-book "Hạt Giống Tiến Hóa" --yes
@@ -1207,9 +1228,9 @@ python3 tools/webnovel_to_md.py \
  1896  python analyze_chapter_storage.py --delete --yes
  1897  python analyze_chapter_storage.py
  1898  python manage_books.py delete-book "Trói Buộc Linh Hồn" --yes
- 1899  python manage_books.py delete-book "Cửu Vực Tà Hoàng
+ 
  1900  " --yes
- 1901  python manage_books.py delete-book "Cửu Vực Tà Hoàng" --yes
+ 
  1902  python manage_books.py delete-book "Trò Chơi Tử Vong Luân Hồi" --yes
  1903  python manage_books.py delete-book "Võ Hiệp Huyền Huyễn Chi Sát Lục Hệ Thống" --yes
  1904  exit
@@ -1231,18 +1252,17 @@ python3 tools/webnovel_to_md.py \
  1922  code
  1923  cd /home/thanh/Documents/tool_code/code_tool_thread/web/importer/
  1924  source venv/bin/activate
- 1925  python manage_books.py delete-book "Đệ Nhất Kiếm Thần" --yes
- 1926  python manage_books.py delete-book "Hợp Thể Song Tu" --yes
- 1927  python manage_books.py delete-book "Đại Thánh Truyện" --yes
- 1928  python manage_books.py delete-book "Tiên Đạo Cầu Sách" --yes
- 1929  python manage_books.py delete-book "Ngẫu Ngộ Thành Tiên" --yes
- 1930  python manage_books.py delete-book "Tam Thái Tử" --yes
- 1931  python manage_books.py delete-book "Vạn Giới Pháp Thần" --yes
+
+ 
+
+ 
+ 
+
  1932  python manage_books.py delete-book "Cảm Nhiễm Thể" --yes
  1933  python manage_books.py delete-book "Liên Minh Chi Thần" --yes
  1934  python manage_books.py delete-book "Độc Bộ" --yes
  1935  python manage_books.py delete-book "Pháp Sư Đôi Mươi" --yes
- 1936  python manage_books.py delete-book "Thuẫn Kích" --yes
+
  1937  python analyze_chapter_storage.py
  1938  python analyze_chapter_storage.py --delete --yes
  1939  python manage_books.py delete-book "Trù Đạo Tiên Đồ" --yes
@@ -1257,24 +1277,24 @@ python3 tools/webnovel_to_md.py \
  1948  python manage_books.py delete-book "Nhân Gian Băng Khí" --yes
  1949  python manage_books.py delete-book "Dị Giới Dược Sư" --yes
  1950  python manage_books.py delete-book "Mạo Bài Đại Anh Hùng" --yes
- 1951  python manage_books.py delete-book "Thịnh Đường Vô Yêu" --yes
+
  1952  python manage_books.py delete-book "Chân Lộ" --yes
  1953  python manage_books.py delete-book "Vũ Luyện Điên Phong" --yes
- 1954  python manage_books.py delete-book "Đế Tôn" --yes
- 1955  python manage_books.py delete-book "Đế Bá" --yes
+
+
  1956  python manage_books.py delete-book "Dương Thần" --yes
- 1957  python manage_books.py delete-book "Dạ Vô Cương" --yes
+
  1958  python manage_books.py delete-book "Tiên Ngạo" --yes
- 1959  python manage_books.py delete-book "Vương Thị Tiên Lộ" --yes
- 1960  python manage_books.py delete-book "Thương Lam Đỉnh" --yes
+
+
  1961  python manage_books.py delete-book "Thiên Ảnh
  1962  " --yes
  1963  python manage_books.py delete-book "Thiên Ảnh" --yes
- 1964  python manage_books.py delete-book "Tru Tiên: Luân Hồi" --yes
+
  1965  python manage_books.py delete-book "Trọng Sinh Tiêu Dao Đạo" --yes
  1966  python manage_books.py delete-book "Luân Hồi" --yes
  1967  python manage_books.py delete-book "Linh Khí Bức Nhân" --yes
- 1968  python manage_books.py delete-book "Ngũ Hành Thiên" --yes
+
  1969  python manage_books.py delete-book "Bất Diệt Thánh Linh" --yes
  1970  python manage_books.py delete-book "Thần Ma Chi Mộ" --yes
  1971  python manage_books.py delete-book "Tu Chân Liêu Thiên Quần" --yes
@@ -1303,6 +1323,7 @@ python3 tools/webnovel_to_md.py \
  1994  source venv/bin/activate
  1995  python analyze_chapter_storage.py
  1996  python manage_books.py delete-book "Thương Thiên" --yes
+
  1997  python manage_books.py delete-book "Long Phù" --yes
  1998  python manage_books.py delete-book "Nghịch Thần Ký" --yes
  1999  python manage_books.py delete-book "Thái Dịch" --yes
@@ -1311,9 +1332,9 @@ python3 tools/webnovel_to_md.py \
  2003  python manage_books.py delete-book "Đại Kiếp Chủ" --yes
  2004  python manage_books.py delete-book "Ngã Thị Chí Tôn" --yes
  2005  python manage_books.py delete-book "Tu Chân Tứ Vạn Niên" --yes
- 2006  python manage_books.py delete-book "Võ Đạo Tinh Hồn" --yes
+
  2007  python manage_books.py delete-book "Thần Tiên Cũng Có Giang Hồ" --yes
- 2008  python manage_books.py delete-book "Tuyệt Thế Kiếm Thần" --yes
+ 
  2009  python manage_books.py delete-book "Lạc Thiên Tiên Đế" --yes
  2010  python manage_books.py delete-book "Ta Có Trăm Vạn Ức Công Đức (Ngã Hữu Bách Vạn Ức Công Đức)" --yes
  2011  python manage_books.py delete-book "Tiên Tuyệt" --yes
@@ -1366,5 +1387,5 @@ TODO: need to add R2 comment table
 
 ollama pull qwen2.5-coder:14b
 
-Loi Tien Ngao
+
 TODO: resync toan chuc cao thu
