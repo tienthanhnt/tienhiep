@@ -13,7 +13,7 @@
 
 ```
 web/importer/
-├── .env                               ← API keys (Supabase, Cloudflare R2/D1, Ollama/Gemini nếu dùng)
+├── .env                               ← API keys (Supabase, Cloudflare R2/D1 và AI provider nếu dùng)
 ├── chapters/
 │   ├── Ten_Truyen/                    ← Markdown tách từ EPUB, chưa dịch
 │   └── Ten_Truyen_Translated/         ← Markdown đã dịch, folder kết thúc bằng _Translated
@@ -371,7 +371,7 @@ Flow khuyến nghị gồm 2 bước:
 ```bash
 cd importer
 
-# Bước 1: convert toàn bộ EPUB sang folder *_Translated và ghi book_info.txt bằng Ollama
+# Bước 1: convert toàn bộ EPUB sang folder *_Translated và ghi book_info.txt bằng AI
 python batch_epub_upload.py /duong/dan/folder_epub --convert-only
 
 # Bước 2: xem trước danh sách sẽ upload sau khi lọc truyện đã có trong Supabase cũ
@@ -413,8 +413,26 @@ Ghi chú quan trọng:
 - Nếu cố ý muốn upload cả truyện đã có Supabase lên D1/R2, thêm `--allow-supabase-duplicates`.
 - Tool chỉ upload các folder nằm trong manifest batch mới nhất: `chapters/.batch_epub_upload_latest.json`.
 - Mỗi folder được batch tạo có marker `.batch_epub_upload.json`, giúp phân biệt với folder truyện cũ đã convert thủ công.
-- SEO metadata mặc định dùng Ollama model `qwen3:14b`; có thể đổi bằng `--ollama-model`.
-- Ranking được random trong khoảng `50-100` khi convert. Số càng nhỏ càng hiện trước trên trang chủ.
+- Khi upload D1/R2 thành công, tool ghi `uploaded_d1_r2=true` và `uploaded_at` vào marker, đồng thời xóa folder khỏi manifest chờ upload. Khi chạy lại, các marker cũ chưa có trạng thái cũng được đối chiếu với `chapter_count` trên D1 và tự động bỏ qua nếu đã upload đủ.
+- SEO metadata mặc định dùng Ollama model `qwen3:14b`. Có thể dùng Gemini, Grok (xAI) hoặc Groq. Chỉ khai báo một `AI_PROVIDER` và một `AI_MODEL` đang dùng trong `importer/.env`.
+
+```dotenv
+# Ví dụ dùng Groq (console.groq.com)
+AI_PROVIDER=groq
+AI_MODEL=openai/gpt-oss-20b
+GROQ_API_KEY=your_groq_api_key
+```
+
+`GROQ_API_KEY` và `GROK_API_KEY` là hai loại key khác nhau. Key Groq thường bắt đầu bằng `gsk_`; `GROK_API_KEY` chỉ dùng cho API xAI tại `console.x.ai`.
+
+Khi dùng AI online, tool mặc định chờ 30 giây giữa hai truyện. Nếu Groq trả HTTP 429, tool tự đọc thời gian chờ và retry tối đa 3 lần. Có thể đổi delay bằng `--ai-delay 45` hoặc biến `AI_DELAY_SECONDS=45` trong `.env`. Manifest được cập nhật sau từng truyện thành công để không mất danh sách đã convert nếu batch dừng giữa chừng.
+
+AI dùng nội dung đầu truyện để viết description và tối đa 1.500 ký tự cuối chương cuối để đánh giá trạng thái. Tool chỉ ghi `status=Đang ra` khi AI kết luận `Chưa hoàn thành` với confidence `high`; trường hợp không chắc hoặc confidence thấp/trung bình vẫn ghi `status=Hoàn thành`.
+
+Mặc định, nếu số chương tạo ra thấp hơn mục lục EPUB, tool chỉ cảnh báo và vẫn tiếp tục. Nếu muốn đặt giới hạn nghiêm ngặt, dùng `--allow-missing-chapters 3`; batch sẽ dừng khi một EPUB thiếu nhiều hơn 3 chương.
+
+  Chọn provider khi chạy bằng `--ai-provider gemini`, `--ai-provider grok` hoặc `--ai-provider ollama`. Không commit file `.env` lên Git.
+- Ranking được random trong khoảng `200-1000` khi convert. Số càng nhỏ càng hiện trước trên trang chủ.
 
 Kiểm tra batch đã upload lên nguồn nào:
 
@@ -637,7 +655,10 @@ ORDER BY click_count DESC;
 | Upload lại cover D1/R2 | `python upload_new_d1_r2.py --translated-dir chapters/... --covers-only` |
 | Xem trước cover D1/R2 cần repair | `python repair_d1_r2_covers.py` |
 | Repair cover mặc định hàng loạt D1/R2 | `python repair_d1_r2_covers.py --yes` |
-| Batch convert nhiều EPUB bằng Ollama SEO | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only` |
+| Batch convert nhiều EPUB bằng AI SEO | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only` |
+| Batch convert bằng Gemini | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only --ai-provider gemini --ollama-model gemini-2.5-flash` |
+| Batch convert bằng Grok | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only --ai-provider grok --ollama-model grok-3-mini` |
+| Batch convert bằng Groq | `python batch_epub_upload.py /duong/dan/folder_epub --convert-only --ai-provider groq --ai-model openai/gpt-oss-20b` |
 | Xem trước batch sẽ upload | `python batch_epub_upload.py --upload-only --dry-run` |
 | Batch upload thử 3 truyện lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-limit 3` |
 | Batch upload phần còn lại lên D1 + R2 | `python batch_epub_upload.py --upload-only --upload-skip 3` |
@@ -1147,11 +1168,7 @@ python3 tools/webnovel_to_md.py \
   --placeholder-on-blocked \
   --max-consecutive-blocked 20
 
- 1821  python manage_books.py delete-book "Sát Thủ Cho Mỹ Nữ Thuê Phòng" --yes
- 1822  python manage_books.py delete-book "Âm Hôn: Ma Vương Đừng Chạm Vào Ta!" --yes
- 1823  python manage_books.py delete-book "Phúc Hắc Cuồng Nữ: Khuynh Thành Triệu Hồi Sư Vô Ý Bảo Bảo" --yes
- 1824  python manage_books.py delete-book "Phúc Hắc Cuồng Nữ..." --yes
- 1825  python manage_books.py delete-book "Phong Lưu Chân Tiên" --yes
+
  1827  python manage_books.py delete-book "Huyền Huyễn Bắt Đầu Từ Hỗn Độn Thể" --yes
 
 
@@ -1160,16 +1177,11 @@ python3 tools/webnovel_to_md.py \
  1831  python manage_books.py delete-book "Sư Phụ Lại Mất Tích Rồi" --yes
 
 
- 1833  python manage_books.py delete-book "Nữ Phụ Tiên Lộ Gập Ghềnh" --yes
  1834  python manage_books.py delete-book "Tiểu Bạch Kiểm Liệp Diễm" --yes
  
-
- 1837  python manage_books.py delete-book "Chứng Hồn Đạo" --yes
- 1838  python manage_books.py delete-book "Hỗn Nguyên Hệ Thống" --yes
  1839  python manage_books.py delete-book "Sư Huynh, Rất Vô Lương" --yes
 
  1841  python manage_books.py delete-book "Thần Cấp Tiên Giới Hệ Thống" --yes
- 1842  python manage_books.py delete-book "Phật Bản Thị Đạo" --yes
  1843  python manage_books.py delete-book "Hoàng Gia Hồn Giả Tại Tu Chân Giới" --yes
 
 
@@ -1265,23 +1277,11 @@ python3 tools/webnovel_to_md.py \
  1993  cd importer/
  1994  source venv/bin/activate
  1995  python analyze_chapter_storage.py
- 1996  python manage_books.py delete-book "Thương Thiên" --yes
- 1998  python manage_books.py delete-book "Nghịch Thần Ký" --yes
  
- 2000  python manage_books.py delete-book "Phong Ấn Tiên Tôn" --yes
-
- 2003  python manage_books.py delete-book "Đại Kiếp Chủ" --yes
- 2004  python manage_books.py delete-book "Ngã Thị Chí Tôn" --yes
+  
  2005  python manage_books.py delete-book "Tu Chân Tứ Vạn Niên" --yes
-
- 2007  python manage_books.py delete-book "Thần Tiên Cũng Có Giang Hồ" --yes
- 
- 2009  python manage_books.py delete-book "Lạc Thiên Tiên Đế" --yes
  2010  python manage_books.py delete-book "Ta Có Trăm Vạn Ức Công Đức (Ngã Hữu Bách Vạn Ức Công Đức)" --yes
- 2011  python manage_books.py delete-book "Tiên Tuyệt" --yes
- 2012  python manage_books.py delete-book "Nhất Ngôn Thông Thiên" --yes
- 2013  python analyze_chapter_storage.py --delete --yes
- 2014  python analyze_chapter_storage.py
+ 
  2015  python manage_books.py delete-book "Vạn Cổ Chí Tôn" --yes
  2016  python manage_books.py delete-book "Bất Hủ Phàm Nhân" --yes
 

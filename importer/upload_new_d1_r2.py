@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import gzip
 import hashlib
 import os
 import re
@@ -43,7 +42,7 @@ def slugify_for_route(value: str) -> str:
 def get_existing_book(title: str) -> dict | None:
     rows = d1_rows(
         """
-        SELECT id, public_id, title, cover_url
+        SELECT id, public_id, title, cover_url, chapter_count
         FROM books
         WHERE title = ?
         LIMIT 1
@@ -211,16 +210,16 @@ def upload_chapter_content_r2(
     html_content: str,
 ) -> tuple[str, str]:
     safe_title = safe_storage_name(chapter_title)
-    content_path = f"chapters/{public_id}/{chapter_number:04d}_{safe_title}.html.gz"
-    compressed_html = gzip.compress(html_content.encode("utf-8"), compresslevel=9)
+    content_path = f"chapters/{public_id}/{chapter_number:04d}_{safe_title}.html"
+    encoded_html = html_content.encode("utf-8")
     last_error = None
 
     for attempt in range(1, UPLOAD_RETRY_COUNT + 1):
         try:
             public_url = upload_r2_object(
                 content_path,
-                compressed_html,
-                "application/gzip",
+                encoded_html,
+                "text/html; charset=utf-8",
                 CHAPTER_CACHE_CONTROL,
             )
             return content_path, public_url
@@ -246,13 +245,13 @@ def upload_chapters_new(
     translated_dir: str,
     limit: int | None = None,
     allow_supabase_duplicate: bool = False,
-) -> None:
+) -> bool:
     print(f"📖 Đang upload nguồn mới D1 + R2 từ: {translated_dir}")
 
     book_dir = Path(translated_dir)
     if not book_dir.is_dir():
         print(f"❌ Không tìm thấy thư mục: {translated_dir}")
-        return
+        return False
 
     files = sorted(path for path in book_dir.iterdir() if path.name.endswith(".md"))
     if limit is not None:
@@ -261,7 +260,7 @@ def upload_chapters_new(
 
     if not files:
         print("⚠️ Không tìm thấy file .md nào trong thư mục dịch.")
-        return
+        return False
 
     book_info = read_book_info(str(book_dir))
     if not allow_supabase_duplicate:
@@ -273,7 +272,7 @@ def upload_chapters_new(
                 f"(ID {supabase_book.get('id')}, {supabase_book.get('chapter_count') or 0} chương)."
             )
             print("   Nếu cố ý muốn upload trùng lên D1/R2, thêm --allow-supabase-duplicate.")
-            return
+            return False
 
     existing_book = get_existing_book(book_info["title"])
     if existing_book:
@@ -360,8 +359,23 @@ def upload_chapters_new(
     print(f"📚 Tổng chương trên D1: {total_chapters}")
     if failed_chapter:
         print("⚠️  Có lỗi giữa chừng. Chạy lại cùng lệnh, tool sẽ bỏ qua các chương đã có và tiếp tục.")
+        return False
     else:
         print("🎉 Upload nguồn mới D1 + R2 hoàn tất.")
+        expected_chapters = len(
+            {
+                int(match.group(1))
+                for path in files
+                if (match := re.match(r"^(\d+)_", path.name))
+            }
+        )
+        if total_chapters < expected_chapters:
+            print(
+                f"⚠️  D1 mới có {total_chapters}/{expected_chapters} chương local; "
+                "chưa đánh dấu upload hoàn tất."
+            )
+            return False
+        return True
 
 
 def main() -> int:

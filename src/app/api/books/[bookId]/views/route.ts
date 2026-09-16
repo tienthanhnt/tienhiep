@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isNewBookIdentifier } from "@/lib/d1";
+import { executeD1, getNewBookPublicId, isNewBookIdentifier } from "@/lib/d1";
 
 const BOT_USER_AGENT_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|uptime|vercel|headless/i;
 
@@ -7,8 +7,35 @@ export async function POST(
   request: Request,
   { params }: { params: { bookId: string } }
 ) {
-  if (isNewBookIdentifier(params.bookId)) {
+  const userAgent = request.headers.get("user-agent") || "";
+  if (BOT_USER_AGENT_PATTERN.test(userAgent)) {
     return NextResponse.json({ skipped: true });
+  }
+
+  if (isNewBookIdentifier(params.bookId)) {
+    const publicId = getNewBookPublicId(params.bookId);
+    if (!publicId) {
+      return NextResponse.json({ error: "Invalid book id" }, { status: 400 });
+    }
+    try {
+      const rows = await executeD1<{ view_count: number }>(
+        `
+        UPDATE books
+        SET view_count = COALESCE(view_count, 0) + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE public_id = ?
+        RETURNING view_count
+        `,
+        [publicId],
+      );
+      if (!rows[0]) {
+        return NextResponse.json({ error: "Book not found" }, { status: 404 });
+      }
+      return NextResponse.json({ viewCount: Number(rows[0].view_count || 0) });
+    } catch (error) {
+      console.error("Could not record D1 book view:", error);
+      return NextResponse.json({ error: "Could not record view" }, { status: 502 });
+    }
   }
 
   const bookId = Number(params.bookId);
@@ -21,11 +48,6 @@ export async function POST(
 
   if (!url || !key) {
     return NextResponse.json({ error: "Missing Supabase config" }, { status: 500 });
-  }
-
-  const userAgent = request.headers.get("user-agent") || "";
-  if (BOT_USER_AGENT_PATTERN.test(userAgent)) {
-    return NextResponse.json({ skipped: true });
   }
 
   try {

@@ -9,7 +9,9 @@ import { formatCompactNumber } from '@/lib/format';
 import { resolveBookId } from '@/lib/books';
 import { buildBookDescription, getBookPath, getChapterPath, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
-export const revalidate = 3600;
+const BOOK_DETAIL_REVALIDATE_SECONDS = 5 * 60;
+
+export const revalidate = BOOK_DETAIL_REVALIDATE_SECONDS;
 
 interface Chapter {
   id: number | string;
@@ -43,6 +45,7 @@ interface D1BookRow {
   description?: string | null;
   genres?: string | null;
   source_type?: string | null;
+  view_count?: number | null;
 }
 
 interface D1ChapterRow {
@@ -67,13 +70,13 @@ async function getBookDetails(identifier: string) {
     const books = await queryD1<D1BookRow>(
       `
       SELECT id, public_id, title, author, cover_url, status, chapter_count,
-             description, genres, source_type
+             description, genres, source_type, view_count
       FROM books
       WHERE public_id = ?
       LIMIT 1
       `,
       [publicId],
-      3600,
+      BOOK_DETAIL_REVALIDATE_SECONDS,
     );
     if (!books[0]) return null;
 
@@ -95,7 +98,7 @@ async function getBookDetails(identifier: string) {
         ...d1Book,
         id: d1Book.public_id || `new-${d1Book.id}`,
         internal_id: d1Book.id,
-        view_count: 0,
+        view_count: d1Book.view_count || 0,
       } as Book,
       chapters,
       commentCount: 0,
@@ -167,7 +170,7 @@ async function getBookSeoData(identifier: string) {
     const books = await queryD1<D1BookRow>(
       `
       SELECT id, public_id, title, author, cover_url, status, chapter_count,
-             description, genres, source_type
+             description, genres, source_type, view_count
       FROM books
       WHERE public_id = ?
       LIMIT 1
@@ -181,7 +184,7 @@ async function getBookSeoData(identifier: string) {
     return {
       ...book,
       id: book.public_id || `new-${book.id}`,
-      view_count: 0,
+      view_count: book.view_count || 0,
     } as Book;
   }
 

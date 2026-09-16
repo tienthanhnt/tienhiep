@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
-import AdsterraBanner4 from "@/components/AdsterraBanner4";
 import { queryD1 } from "@/lib/d1";
 import { formatCompactNumber } from "@/lib/format";
 import { getSiteUrl, SITE_NAME } from "@/lib/seo";
@@ -51,6 +50,7 @@ interface D1Book {
   cover_url: string;
   genres?: string | null;
   source_type?: string | null;
+  view_count?: number | null;
   ranking?: number | null;
 }
 
@@ -81,7 +81,7 @@ function mapD1Book(b: D1Book): BookItem {
     coverUrl: b.cover_url || DEFAULT_COVER_URL,
     genres: b.genres || "",
     sourceType: b.source_type || "",
-    viewCount: 0,
+    viewCount: b.view_count || 0,
     ranking: b.ranking ?? null,
   };
 }
@@ -117,7 +117,7 @@ async function getD1Books() {
   return queryD1<D1Book>(
     `
     SELECT id, public_id, title, author, chapter_count, rating, status,
-           cover_url, genres, source_type, ranking
+           cover_url, genres, source_type, view_count, ranking
     FROM books
     ORDER BY ranking ASC, id ASC
     `,
@@ -206,13 +206,6 @@ export default async function Home({
           pageSize={BOOKS_PER_PAGE}
         />
       </Suspense>
-
-      {/* Bottom ad section: Medium Rectangle */}
-      <div className="flex flex-col items-center gap-4 my-4 w-full overflow-hidden">
-        <div className="flex justify-center w-full">
-          <AdsterraBanner4 />
-        </div>
-      </div>
 
       <div className="self-center rounded border border-[#E8E0D2] px-2.5 py-1 text-[11px] text-[#A09688]">
         Tổng lượt đọc: {formatCompactNumber(totalViewCount)}

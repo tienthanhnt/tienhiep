@@ -60,3 +60,32 @@ export async function queryD1<T>(
     return [];
   }
 }
+
+export async function executeD1<T>(
+  sql: string,
+  params: Array<string | number | null> = [],
+): Promise<T[]> {
+  const config = getD1Config();
+  if (!config) throw new Error("Missing D1 configuration");
+
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/d1/database/${config.databaseId}/query`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sql, params }),
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) throw new Error(`D1 request failed with HTTP ${response.status}`);
+
+  const data = await response.json() as D1Response<T>;
+  const result = data.result?.[0];
+  if (!data.success || !result?.success) {
+    throw new Error(`D1 query failed: ${JSON.stringify(data.errors || [])}`);
+  }
+  return result.results || [];
+}

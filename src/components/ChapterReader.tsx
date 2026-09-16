@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
 import AdsterraBanner4 from './AdsterraBanner4';
-import AdsterraNativeBanner from './AdsterraNativeBanner';
 import BookComments from './BookComments';
 import { getBookPath, getChapterPath } from '@/lib/seo';
 
@@ -92,15 +91,8 @@ export default function ChapterReader({
       try {
         const raw = window.localStorage.getItem(VIEW_TRACKING_KEY);
         const tracked = raw ? JSON.parse(raw) : {};
-        if (String(bookId).startsWith('new-')) return;
-
         const lastTrackedAt = Number(tracked?.[bookId] || 0);
         if (Date.now() - lastTrackedAt < VIEW_TRACKING_INTERVAL_MS) return;
-
-        window.localStorage.setItem(
-          VIEW_TRACKING_KEY,
-          JSON.stringify({ ...tracked, [bookId]: Date.now() })
-        );
       } catch {
         // Continue tracking even when localStorage is unavailable.
       }
@@ -108,6 +100,18 @@ export default function ChapterReader({
       fetch(`/api/books/${bookId}/views`, {
         method: 'POST',
         keepalive: true,
+      }).then((response) => {
+        if (!response.ok) return;
+        try {
+          const raw = window.localStorage.getItem(VIEW_TRACKING_KEY);
+          const tracked = raw ? JSON.parse(raw) : {};
+          window.localStorage.setItem(
+            VIEW_TRACKING_KEY,
+            JSON.stringify({ ...tracked, [bookId]: Date.now() })
+          );
+        } catch {
+          // The view was recorded even if localStorage cannot persist the timestamp.
+        }
       }).catch(() => {
         // View tracking should never interrupt reading.
       });
@@ -589,8 +593,6 @@ export default function ChapterReader({
         />
       )}
 
-      {/* Native Banner Positioned at bottom */}
-      <AdsterraNativeBanner className="my-2" />
     </div>
   );
 }

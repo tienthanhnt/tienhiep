@@ -21,6 +21,7 @@ SCHEMA_STATEMENTS = [
       ranking INTEGER NOT NULL DEFAULT 0,
       rating REAL NOT NULL DEFAULT 8.0,
       chapter_count INTEGER NOT NULL DEFAULT 0,
+      view_count INTEGER NOT NULL DEFAULT 0,
       cover_url TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -51,6 +52,11 @@ def main() -> int:
     print("🔧 Đang tạo schema D1 cho nguồn truyện mới...")
     for statement in SCHEMA_STATEMENTS:
         d1_query(statement)
+
+    book_columns = {row["name"] for row in d1_rows("PRAGMA table_info(books)")}
+    if "view_count" not in book_columns:
+        d1_query("ALTER TABLE books ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0")
+        print("✅ Đã thêm books.view_count vào D1.")
 
     tables = d1_rows(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('books', 'chapters') ORDER BY name"

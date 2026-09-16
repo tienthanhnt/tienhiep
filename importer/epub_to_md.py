@@ -37,6 +37,21 @@ def translated_folder_name(title: str) -> str:
     return f"{folder_name}_Translated"
 
 
+def epub_filename_title(epub_path: str) -> str:
+    title = os.path.splitext(os.path.basename(epub_path))[0]
+    title = re.sub(r'^Bản sao của\s+', '', title, flags=re.IGNORECASE)
+    return title.strip() or "Truyen_Khong_Ten"
+
+
+def metadata_text(book, namespace: str, key: str, fallback: str) -> str:
+    entries = book.get_metadata(namespace, key)
+    if entries and entries[0]:
+        value = entries[0][0]
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return fallback
+
+
 def natural_sort_key(value: str):
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r'(\d+)', value)]
 
@@ -249,6 +264,28 @@ def collect_toc_chapter_titles(book):
     return toc_titles
 
 
+def collect_numbered_toc_documents(book) -> set[str]:
+    documents = set()
+
+    def visit(entries):
+        for entry in entries:
+            if isinstance(entry, (tuple, list)):
+                visit(entry)
+                continue
+            href = getattr(entry, 'href', '') or ''
+            title = getattr(entry, 'title', '') or ''
+            path = posixpath.normpath(href.split('#', 1)[0])
+            if (
+                re.fullmatch(r'\d+\.(?:xhtml|html|htm)', posixpath.basename(path), re.IGNORECASE)
+                and not is_skippable_title(title)
+                and not re.search(r'giới thiệu|lời nói đầu|lời tựa', title, re.IGNORECASE)
+            ):
+                documents.add(path)
+
+    visit(book.toc)
+    return documents
+
+
 def merge_pending_title_with_section(pending_title: str, section):
     title, paragraphs = section
     if not pending_title:
@@ -378,14 +415,13 @@ def convert_to_chapters(epub_path: str, output_dir: str):
         return None
 
     # Lấy tên truyện và tác giả
-    title_meta = book.get_metadata('DC', 'title')
-    author_meta = book.get_metadata('DC', 'creator')
-    title = title_meta[0][0] if title_meta else "Truyen_Khong_Ten"
-    author = author_meta[0][0] if author_meta else "Chua_ro"
+    title = metadata_text(book, 'DC', 'title', epub_filename_title(epub_path))
+    author = metadata_text(book, 'DC', 'creator', "Chua_ro")
 
     print(f"🔍 Tên truyện : {title}")
     print(f"✍️  Tác giả    : {author}")
     toc_chapter_titles = collect_toc_chapter_titles(book)
+    numbered_toc_documents = collect_numbered_toc_documents(book)
 
     # Tạo thư mục output riêng cho từng truyện
     book_folder = os.path.join(output_dir, translated_folder_name(title))
@@ -409,6 +445,7 @@ def convert_to_chapters(epub_path: str, output_dir: str):
             continue
 
         soup = BeautifulSoup(item.get_body_content(), 'html.parser')
+        is_numbered_toc_document = posixpath.normpath(item.get_name()) in numbered_toc_documents
         title_only_marker = get_title_only_chapter_marker(soup)
         if title_only_marker:
             chapter_number = get_chapter_number(title_only_marker)
@@ -443,7 +480,11 @@ def convert_to_chapters(epub_path: str, output_dir: str):
                 )
                 pending_title = None
 
-            if not has_seen_chapter and not is_output_chapter_title(chapter_title):
+            if (
+                not has_seen_chapter
+                and not is_output_chapter_title(chapter_title)
+                and not is_numbered_toc_document
+            ):
                 skipped += 1
                 continue
 
@@ -451,7 +492,7 @@ def convert_to_chapters(epub_path: str, output_dir: str):
                 skipped += 1
                 continue
 
-            if is_output_chapter_title(chapter_title):
+            if is_output_chapter_title(chapter_title) or is_numbered_toc_document:
                 has_seen_chapter = True
 
             collected_sections.append((chapter_title, paragraphs, chapter_index))
