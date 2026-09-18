@@ -355,7 +355,7 @@ export default async function BookDetailPage({
         initialPage={initialChapterPage}
       />
 
-      {typeof book.id === "number" && <BookComments bookId={book.id} />}
+      <BookComments bookId={book.id} />
 
       <AdsterraBanner />
     </div>

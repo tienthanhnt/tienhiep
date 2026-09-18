@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
+import { executeD1, getNewBookPublicId, isNewBookIdentifier } from "@/lib/d1";
 
 const MAX_COMMENTS_PER_BOOK = 60;
 const MAX_NICKNAME_LENGTH = 40;
@@ -55,6 +56,20 @@ export async function GET(
   _request: Request,
   { params }: { params: { bookId: string } }
 ) {
+  if (isNewBookIdentifier(params.bookId)) {
+    try {
+      const comments = await executeD1(
+        `SELECT c.id, c.book_id, c.chapter_number, c.nickname, c.content, c.rating, c.created_at
+         FROM book_comments c JOIN books b ON b.id = c.book_id
+         WHERE b.public_id = ? ORDER BY c.created_at DESC, c.id DESC LIMIT ?`,
+        [getNewBookPublicId(params.bookId), MAX_COMMENTS_PER_BOOK],
+      );
+      return NextResponse.json({ comments }, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      console.error("Error listing D1 comments:", error);
+      return NextResponse.json({ error: "Không tải được bình luận." }, { status: 502 });
+    }
+  }
   const bookId = Number(params.bookId);
   const { url, key } = getSupabaseConfig();
 
@@ -93,13 +108,14 @@ export async function POST(
   { params }: { params: { bookId: string } }
 ) {
   const bookId = Number(params.bookId);
+  const publicId = getNewBookPublicId(params.bookId);
   const { url, key } = getSupabaseConfig();
 
-  if (!Number.isInteger(bookId) || bookId <= 0) {
+  if (!publicId && (!Number.isInteger(bookId) || bookId <= 0)) {
     return NextResponse.json({ error: "Truyện không hợp lệ." }, { status: 400 });
   }
 
-  if (!url || !key) {
+  if (!publicId && (!url || !key)) {
     return NextResponse.json({ error: "Thiếu cấu hình Supabase." }, { status: 500 });
   }
 
@@ -138,10 +154,59 @@ export async function POST(
   const visitorHash = hashVisitor(`${ip}:${userAgent.slice(0, 160)}`);
   const userAgentHash = hashVisitor(userAgent.slice(0, 240));
 
+  if (publicId) {
+    try {
+      const books = await executeD1<{ id: number }>(
+        "SELECT id FROM books WHERE public_id = ? LIMIT 1", [publicId],
+      );
+      if (!books[0]) {
+        return NextResponse.json({ error: "Không tìm thấy truyện." }, { status: 404 });
+      }
+      const internalId = books[0].id;
+      // Check cooldowns inside the INSERT so concurrent requests cannot both pass.
+      const comments = await executeD1(
+        `INSERT INTO book_comments
+           (book_id, chapter_number, nickname, content, rating, visitor_hash, user_agent_hash)
+         SELECT ?, ?, ?, ?, ?, ?, ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM book_comments WHERE visitor_hash = ?
+             AND julianday(created_at) > julianday('now', '-2 minutes')
+         ) AND NOT EXISTS (
+           SELECT 1 FROM book_comments WHERE book_id = ? AND visitor_hash = ?
+             AND julianday(created_at) > julianday('now', '-30 minutes')
+         )
+         RETURNING id, book_id, chapter_number, nickname, content, rating, created_at`,
+        [internalId, chapterNumber, nickname, content, rating, visitorHash, userAgentHash,
+          visitorHash, internalId, visitorHash],
+      );
+      if (!comments[0]) {
+        return NextResponse.json(
+          { error: "Bạn gửi bình luận hơi nhanh. Chờ 2 phút giữa các lần gửi và 30 phút cho cùng truyện." },
+          { status: 429 },
+        );
+      }
+      try {
+        await executeD1(
+          `DELETE FROM book_comments WHERE book_id = ? AND id IN (
+             SELECT id FROM book_comments WHERE book_id = ?
+             ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ?
+           )`,
+          [internalId, internalId, MAX_COMMENTS_PER_BOOK],
+        );
+      } catch (error) {
+        console.error("Error pruning D1 comments:", error);
+      }
+      return NextResponse.json({ comment: comments[0] }, { status: 201 });
+    } catch (error) {
+      console.error("Error creating D1 comment:", error);
+      return NextResponse.json({ error: "Không thể gửi bình luận lúc này." }, { status: 502 });
+    }
+  }
+
   try {
     const response = await fetch(`${url}/rest/v1/rpc/create_book_comment`, {
       method: "POST",
-      headers: getSupabaseHeaders(key),
+      headers: getSupabaseHeaders(key!),
       body: JSON.stringify({
         target_book_id: bookId,
         target_chapter_number: chapterNumber,

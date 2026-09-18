@@ -13,7 +13,7 @@ interface BookComment {
 }
 
 interface BookCommentsProps {
-  bookId: number;
+  bookId: number | string;
   chapterNumber?: number;
   showList?: boolean;
   compact?: boolean;
@@ -36,7 +36,7 @@ function formatCommentTime(value: string) {
   }
 }
 
-function getClientCooldownRemaining(bookId: number) {
+function getClientCooldownRemaining(bookId: number | string) {
   try {
     const raw = window.localStorage.getItem(COMMENT_COOLDOWN_KEY);
     const sentMap = raw ? JSON.parse(raw) : {};
@@ -47,7 +47,7 @@ function getClientCooldownRemaining(bookId: number) {
   }
 }
 
-function setClientCooldown(bookId: number) {
+function setClientCooldown(bookId: number | string) {
   try {
     const raw = window.localStorage.getItem(COMMENT_COOLDOWN_KEY);
     const sentMap = raw ? JSON.parse(raw) : {};
@@ -93,10 +93,12 @@ export default function BookComments({
       const response = await fetch(`/api/books/${bookId}/comments`, {
         cache: "no-store",
       });
-      const data = await response.json() as { comments?: BookComment[] };
+      const data = await response.json() as { comments?: BookComment[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "Không tải được bình luận.");
       setComments(data.comments || []);
-    } catch {
+    } catch (error) {
       setComments([]);
+      setError(error instanceof Error ? error.message : "Không tải được bình luận.");
     } finally {
       setLoading(false);
     }

@@ -42,6 +42,21 @@ SCHEMA_STATEMENTS = [
       FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS book_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+      chapter_number INTEGER,
+      nickname TEXT NOT NULL CHECK(length(nickname) BETWEEN 2 AND 40),
+      content TEXT NOT NULL CHECK(length(content) BETWEEN 3 AND 1000),
+      rating INTEGER CHECK(rating IS NULL OR rating BETWEEN 1 AND 5),
+      visitor_hash TEXT NOT NULL,
+      user_agent_hash TEXT,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_book_comments_book_created ON book_comments(book_id, created_at DESC, id DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_book_comments_visitor_created ON book_comments(visitor_hash, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_books_ranking_id ON books(ranking DESC, id DESC)",
     "CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)",
     "CREATE INDEX IF NOT EXISTS idx_chapters_book_number ON chapters(book_id, chapter_number)",
@@ -59,7 +74,7 @@ def main() -> int:
         print("✅ Đã thêm books.view_count vào D1.")
 
     tables = d1_rows(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('books', 'chapters') ORDER BY name"
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('books', 'chapters', 'book_comments') ORDER BY name"
     )
     table_names = ", ".join(row["name"] for row in tables)
     print(f"✅ Schema OK. Tables: {table_names}")

@@ -584,14 +584,12 @@ export default function ChapterReader({
         {renderChapterLink(nextHref, nextNum, 'Chương Sau →', 'Chương Sau →')}
       </div>
 
-      {typeof bookId === 'number' && (
-        <BookComments
+      <BookComments
           bookId={bookId}
           chapterNumber={chapterNumber}
           showList={false}
           compact
-        />
-      )}
+      />
 
     </div>
   );

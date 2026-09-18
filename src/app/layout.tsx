@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     "Tiên Hiệp Lâu",
   ],
   applicationName: SITE_NAME,
+  verification: {
+    google: "LzLxBjgFD6twMkYLu4uSh8HeokyGZO4ZcIERb_N-Y30",
+  },
   alternates: {
     canonical: "/",
   },
