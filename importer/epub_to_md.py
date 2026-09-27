@@ -268,6 +268,8 @@ def collect_numbered_toc_documents(book) -> set[str]:
     documents = set()
 
     def visit(entries):
+        if not isinstance(entries, (tuple, list)):
+            entries = [entries]
         for entry in entries:
             if isinstance(entry, (tuple, list)):
                 visit(entry)

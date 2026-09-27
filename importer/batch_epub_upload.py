@@ -46,22 +46,7 @@ DEFAULT_KEYWORDS = [
     "Hoàn Thành",
     "Đọc Truyện Online",
 ]
-BLOCKED_KEYWORD_PARTS = [
-    "đam mỹ",
-    "dam my",
-    "ngôn tình",
-    "ngon tinh",
-    "manhua",
-    "manga",
-    "võng du",
-    "vong du",
-    "đô thị",
-    "do thi",
-    "xuyên không",
-    "xuyen khong",
-    "hệ thống",
-    "he thong",
-]
+BLOCKED_KEYWORD_PARTS = []
 
 
 def clean_text(value: str, fallback: str = "") -> str:
@@ -165,53 +150,44 @@ def build_ollama_prompt(
     ending_context: str,
     chapter_count: int,
 ) -> str:
-    return f"""Bạn là biên tập viên SEO cho website đọc truyện tiên hiệp Tiên Hiệp Lâu.
+    return f"""Bạn là biên tập viên viết metadata cho thư viện sách và truyện tiếng Việt.
 
-Hãy viết metadata SEO bằng tiếng Việt cho truyện:
-- Tên truyện: {title}
-- Tác giả: {author}
+Tác phẩm: {title}
+Tác giả: {author}
+Số chương đã convert: {chapter_count}
 
-Nội dung mẫu lấy trực tiếp từ truyện:
+Trích đoạn đầu tác phẩm:
 ---
 {story_context}
 ---
 
-Thông tin dùng để đánh giá trạng thái:
-- Tổng số chương đã convert: {chapter_count}
-- Đoạn cuối của chương cuối:
+Trích đoạn cuối chương cuối:
 ---
 {ending_context}
 ---
 
-Yêu cầu description:
-- Dài khoảng 100-140 từ, tối thiểu 80 từ.
-- Văn phong tự nhiên, hấp dẫn, hợp trang đọc truyện online.
-- Có nhắc tên truyện và tác giả.
-- Nên có các cụm từ SEO tự nhiên như: đọc truyện, truyện tiên hiệp, truyện dịch, truyện full, tu tiên, huyền huyễn.
-- Không bịa chi tiết quá cụ thể nếu không chắc.
-- Chỉ mô tả nhân vật, bối cảnh và tình tiết xuất hiện trong nội dung mẫu.
-- Không khẳng định "dịch chuẩn", "đầy đủ", "không gián đoạn" hoặc chất lượng bản dịch.
-- Không dùng các câu quảng cáo sáo rỗng như "mọi giấc mơ trở thành hiện thực".
-- Không dùng tiếng Trung, tiếng Anh, pinyin, ký tự lạ.
+Hãy dựa vào hai trích đoạn để xác định thể loại, nội dung và trạng thái. Tên tác phẩm chỉ là thông tin tham khảo, không phải bằng chứng về cốt truyện. Website có nhiều thể loại: tiểu thuyết, khoa học viễn tưởng, lịch sử, thơ, chính luận, tình cảm, kỳ ảo và truyện tiên hiệp. Không mặc định tác phẩm là tiên hiệp.
 
-Yêu cầu keywords:
-- Tạo đúng 6 keyword/tag SEO.
-- Mỗi keyword đúng 2 từ.
-- Ví dụ hợp lệ: "tiên hiệp", "tu tiên", "truyện dịch", "truyện full", "đọc truyện", "huyền huyễn".
-- Ví dụ không hợp lệ vì có 3 từ: "truyện tiên hiệp", "đọc truyện online", "tu tiên huyền huyễn".
-- Keyword phải là tiếng Việt có dấu.
-- Ưu tiên keyword người đọc thật sự có thể tìm kiếm.
-- Không dùng tag sai thể loại như: đam mỹ, ngôn tình, manhua, manga, võng du, đô thị, xuyên không, hệ thống.
-- Không dùng ký tự lạ, không dùng tiếng Trung, không dùng pinyin.
-- Không lặp keyword gần giống nhau.
+Description:
+- Viết tiếng Việt tự nhiên, 70-120 từ (ít nhất 60 từ), có tên tác phẩm và tác giả.
+- Tóm tắt bối cảnh, chủ đề, nhân vật hoặc lập luận thực sự thấy trong trích đoạn. Với thơ, văn học hoặc chính luận, gọi là "tác phẩm" thay vì bịa cốt truyện tu tiên.
+- Nếu trích đoạn không đủ rõ để mô tả chi tiết, chỉ viết những điều có căn cứ; không đoán tình tiết từ nhan đề. Bỏ qua lời cảm ơn, quảng cáo và ghi chú nguồn ở cuối EPUB.
+- Không gán sức mạnh siêu nhiên, chiến đấu, hạm đội, dịch thuật hay hoàn thành nếu trích đoạn không chứng minh.
+- Không khẳng định chất lượng bản dịch, không dùng quảng cáo sáo rỗng.
 
-Chỉ trả về một JSON object hợp lệ, không Markdown, không giải thích thêm.
-Trường description phải là đoạn mô tả tiếng Việt hoàn chỉnh về truyện, không được dùng placeholder như "...".
-Trường keywords phải là mảng gồm đúng 6 keyword tiếng Việt hoàn chỉnh, mỗi keyword đúng 2 từ.
-Trường completion_status chỉ được là "Hoàn thành", "Chưa hoàn thành" hoặc "Không chắc".
-Trường completion_confidence chỉ được là "high", "medium" hoặc "low".
-Chỉ chọn "Chưa hoàn thành" với confidence "high" khi đoạn cuối cho thấy truyện đang dang dở rõ ràng.
-Nếu không đủ căn cứ, chọn "Không chắc" và confidence "low".
+Keywords:
+- Đúng 6 tag tiếng Việt, mỗi tag đúng 2 từ (hai tiếng ngăn bằng đúng một dấu cách), không trùng nhau. Ví dụ: "lịch sử", "văn hiến"; không viết "lịch sử Việt" vì có 3 từ.
+- Ưu tiên thể loại và chủ đề thật sự xuất hiện trong trích đoạn. Có thể dùng các tag như "khoa học", "viễn tưởng", "văn học", "lịch sử", "tình cảm", "đô thị", "tiên hiệp", "tu tiên" khi phù hợp.
+- Không dùng "truyện full", "truyện dịch", "tiên hiệp" hoặc "tu tiên" như tag mặc định.
+- Không dùng tiếng Trung, pinyin hoặc ký tự lạ.
+
+Trạng thái:
+- completion_status là "Hoàn thành", "Chưa hoàn thành" hoặc "Không chắc".
+- completion_confidence là "high", "medium" hoặc "low".
+- Chỉ chọn Hoàn thành/high khi đoạn cuối có kết thúc rõ ràng của tác phẩm; nếu không đủ căn cứ, chọn Không chắc/low.
+- source_type là "Dịch" hoặc "Convert". Dịch khi văn tiếng Việt tự nhiên và nhất quán; Convert khi còn dấu hiệu dịch máy hoặc trật tự từ bất thường. Nếu không chắc, chọn Convert.
+
+Chỉ trả về một JSON object hợp lệ có các trường description, keywords, completion_status, completion_confidence, source_type. Không Markdown, không giải thích thêm.
 """
 
 
@@ -220,13 +196,18 @@ def contains_cjk(value: str) -> bool:
 
 
 def normalize_keyword(keyword: str) -> str:
-    keyword = clean_text(keyword)
-    keyword = keyword.strip(" ,.;:-\"'")
+    keyword = clean_text(keyword).strip(" ,.;:-\"'")
+    words = keyword.split()
+    if len(words) > 2:
+        generic_prefixes = {"khoa học", "phản ánh", "đánh giá", "phân tích"}
+        if " ".join(words[:2]).lower() in generic_prefixes:
+            return " ".join(words[-2:])
+        return " ".join(words[:2])
     return keyword
 
 
 def validate_ai_metadata(description: str, keywords: list[str]) -> bool:
-    if len(description.split()) < 80:
+    if len(description.split()) < 60:
         return False
     if contains_cjk(description):
         return False
@@ -251,8 +232,8 @@ def validate_ai_metadata(description: str, keywords: list[str]) -> bool:
 
 
 def metadata_validation_reason(description: str, keywords: list[str]) -> str:
-    if len(description.split()) < 80:
-        return f"description chỉ có {len(description.split())} từ (cần tối thiểu 80)"
+    if len(description.split()) < 60:
+        return f"description chỉ có {len(description.split())} từ (cần tối thiểu 60)"
     if contains_cjk(description):
         return "description chứa ký tự tiếng Trung"
     if len(keywords) != 6:
@@ -310,7 +291,7 @@ def generate_ai_metadata(
     gemini_api_key: str,
     grok_api_key: str,
     groq_api_key: str,
-) -> tuple[str, list[str], str, str] | None:
+) -> tuple[str, list[str], str, str, str] | None:
     prompt = build_ollama_prompt(title, author, story_context, ending_context, chapter_count)
     strict_provider = provider in {"gemini", "grok", "groq"}
     if provider == "gemini":
@@ -341,9 +322,10 @@ def generate_ai_metadata(
                             "type": "STRING",
                             "enum": ["high", "medium", "low"],
                         },
+                        "source_type": {"type": "STRING", "enum": ["Dịch", "Convert"]},
                     },
                     "required": [
-                        "description", "keywords", "completion_status", "completion_confidence"
+                        "description", "keywords", "completion_status", "completion_confidence", "source_type"
                     ],
                 },
             },
@@ -387,7 +369,6 @@ def generate_ai_metadata(
                                 "type": "array",
                                 "items": {
                                     "type": "string",
-                                    "pattern": r"^\S+\s+\S+$",
                                 },
                                 "minItems": 6,
                                 "maxItems": 6,
@@ -400,9 +381,13 @@ def generate_ai_metadata(
                                 "type": "string",
                                 "enum": ["high", "medium", "low"],
                             },
+                            "source_type": {
+                                "type": "string",
+                                "enum": ["Dịch", "Convert"],
+                            },
                         },
                         "required": [
-                            "description", "keywords", "completion_status", "completion_confidence"
+                            "description", "keywords", "completion_status", "completion_confidence", "source_type"
                         ],
                         "additionalProperties": False,
                     },
@@ -495,16 +480,20 @@ def generate_ai_metadata(
             keywords = [normalize_keyword(str(value)) for value in structured.get("keywords", [])]
             completion_status = clean_text(structured.get("completion_status", ""))
             completion_confidence = clean_text(structured.get("completion_confidence", "")).lower()
+            source_type = clean_text(structured.get("source_type", ""))
             if (
                 validate_ai_metadata(description, keywords)
                 and completion_status in {"Hoàn thành", "Chưa hoàn thành", "Không chắc"}
                 and completion_confidence in {"high", "medium", "low"}
+                and source_type in {"Dịch", "Convert"}
             ):
-                parsed = (description, keywords, completion_status, completion_confidence)
+                parsed = (description, keywords, completion_status, completion_confidence, source_type)
         except (json.JSONDecodeError, AttributeError, TypeError):
             parsed = None
     if parsed is None:
         parsed = parse_ai_metadata(output)
+        if parsed:
+            parsed = (*parsed, "Convert")
     if not parsed:
         message = f"API {provider} trả metadata không đạt format/chất lượng."
         if strict_provider:
@@ -540,6 +529,7 @@ def write_auto_book_info(
     ending_context = read_ending_context(book_dir)
     chapter_count = len(list_chapter_paths(book_dir))
     metadata = None
+    source_type = "Convert"
 
     if use_ai_seo:
         print(f"🤖 Đang tạo SEO bằng {ai_provider} model {ollama_model}...")
@@ -551,7 +541,7 @@ def write_auto_book_info(
         )
 
     if metadata:
-        description, keywords, completion_status, completion_confidence = metadata
+        description, keywords, completion_status, completion_confidence, source_type = metadata
         status = (
             "Đang ra"
             if completion_status == "Chưa hoàn thành" and completion_confidence == "high"
@@ -570,7 +560,7 @@ def write_auto_book_info(
         f"title={title}",
         f"author={author}",
         f"status={status}",
-        "source_type=Dịch",
+        f"source_type={source_type}",
         f"ranking={ranking}",
         f"genres={', '.join(keywords)}",
         f"description={description}",

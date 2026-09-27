@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import BookSearchSection from "@/components/BookSearchSection";
 import RecentReading from "@/components/RecentReading";
+import AdsterraBanner4 from "@/components/AdsterraBanner4";
 import { queryD1 } from "@/lib/d1";
 import { formatCompactNumber } from "@/lib/format";
 import { getSiteUrl, SITE_NAME } from "@/lib/seo";
@@ -206,6 +207,10 @@ export default async function Home({
           pageSize={BOOKS_PER_PAGE}
         />
       </Suspense>
+
+      <div className="my-4 flex w-full justify-center overflow-hidden">
+        <AdsterraBanner4 />
+      </div>
 
       <div className="self-center rounded border border-[#E8E0D2] px-2.5 py-1 text-[11px] text-[#A09688]">
         Tổng lượt đọc: {formatCompactNumber(totalViewCount)}
