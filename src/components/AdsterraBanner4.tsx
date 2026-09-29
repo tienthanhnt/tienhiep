@@ -6,9 +6,10 @@ interface AdsterraBanner4Props {
   className?: string;
   loadDelayMs?: number;
   loadImmediately?: boolean;
+  rootMarginPx?: number;
 }
 
-export default function AdsterraBanner4({ className = "", loadDelayMs = 0, loadImmediately = false }: AdsterraBanner4Props) {
+export default function AdsterraBanner4({ className = "", loadDelayMs = 0, loadImmediately = false, rootMarginPx = 1350 }: AdsterraBanner4Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef(false);
@@ -78,7 +79,7 @@ export default function AdsterraBanner4({ className = "", loadDelayMs = 0, loadI
           scheduleLoad();
         }
       },
-      { rootMargin: "1200px 0px" },
+      { rootMargin: `${rootMarginPx}px 0px` },
     );
 
     observer.observe(wrapper);
@@ -87,7 +88,7 @@ export default function AdsterraBanner4({ className = "", loadDelayMs = 0, loadI
       observer.disconnect();
       if (timer) clearTimeout(timer);
     };
-  }, [loadDelayMs, loadImmediately]);
+  }, [loadDelayMs, loadImmediately, rootMarginPx]);
 
   return (
     <div ref={wrapperRef} className={`flex flex-col items-center justify-center ${className}`}>

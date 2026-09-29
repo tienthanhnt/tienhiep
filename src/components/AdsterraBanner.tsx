@@ -79,7 +79,7 @@ export default function AdsterraBanner({ className = "", loadDelayMs = 0, loadIm
           scheduleLoad();
         }
       },
-      { rootMargin: "1200px 0px" },
+      { rootMargin: "1900px 0px" },
     );
 
     observer.observe(wrapper);

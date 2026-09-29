@@ -1078,6 +1078,8 @@ def main():
         )
         batch_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         book_dirs = []
+        failed_epubs_path = output_dir / f"batch_failed_{batch_id}.txt"
+        failed_epubs_path.write_text("", encoding="utf-8")
         write_batch_manifest(output_dir, batch_id, book_dirs)
         for index, epub_path in enumerate(epub_files, 1):
             expected_book_dir = get_epub_output_dir(epub_path, output_dir)
@@ -1107,9 +1109,10 @@ def main():
                     batch_id,
                 )
             except RuntimeError as exc:
-                print(f"\n❌ Batch dừng tại {epub_path.name}: {exc}")
-                print("   Không dùng SEO fallback. Sửa API key/quota rồi chạy lại nhóm này.")
-                raise SystemExit(1) from exc
+                print(f"\n⚠️ Bỏ qua EPUB lỗi: {epub_path.name}: {exc}")
+                with failed_epubs_path.open("a", encoding="utf-8") as failed:
+                    failed.write(f"{epub_path.name}\t{exc}\n")
+                continue
             if book_dir:
                 book_dirs.append(book_dir)
                 write_batch_manifest(output_dir, batch_id, book_dirs)

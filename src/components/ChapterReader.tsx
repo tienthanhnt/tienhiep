@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AdsterraBanner from './AdsterraBanner';
 import AdsterraBanner4 from './AdsterraBanner4';
+// import AdsterraNativeBanner from './AdsterraNativeBanner';
 import BookComments from './BookComments';
 import { getBookPath, getChapterPath } from '@/lib/seo';
 
@@ -554,7 +555,7 @@ export default function ChapterReader({
                   dangerouslySetInnerHTML={{ __html: middleThird }}
                 />
                 {/* Banner 2 — ~2/3 mark */}
-                <AdsterraBanner4 className="my-8 py-4 border-y border-current/10" />
+                <AdsterraBanner4 rootMarginPx={1750} className="my-8 py-4 border-y border-current/10" />
                 {/* Final 1/3 */}
                 <div
                   className="reading-prose font-serif-reading leading-relaxed whitespace-pre-wrap tracking-normal"
@@ -591,6 +592,8 @@ export default function ChapterReader({
           compact
       />
 
+      {/* Native Banner Positioned at bottom - temporarily disabled */}
+      {/* <AdsterraNativeBanner className="my-2" /> */}
     </div>
   );
 }
